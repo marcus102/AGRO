@@ -1,0 +1,34 @@
+import { Stack } from 'expo-router';
+import { useThemeStore } from '@/stores/theme';
+
+export default function ConseilsLayout() {
+  const { colors } = useThemeStore();
+
+  return (
+    <Stack 
+      screenOptions={{ 
+        headerShown: false,
+        contentStyle: {
+          backgroundColor: colors.background,
+        },
+      }}
+    >
+      <Stack.Screen name="index" />
+      <Stack.Screen 
+        name="[id]" 
+        options={{
+          headerShown: true,
+          headerTitle: "",
+          headerStyle: {
+            backgroundColor: colors.card,
+          },
+          headerTintColor: colors.primary,
+          headerTitleStyle: {
+            fontFamily: 'Inter-SemiBold',
+            color: colors.text,
+          },
+        }}
+      />
+    </Stack>
+  );
+}
