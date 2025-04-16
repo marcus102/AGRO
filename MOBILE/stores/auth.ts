@@ -29,11 +29,15 @@ interface AuthState {
 
   verifyEmail: (code: string) => Promise<void>;
   resendVerificationCode: () => Promise<void>;
+  sendVerificationCode: (email: string) => Promise<void>;
 
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
   canCreateJob: (targetRole: string) => boolean;
+
+  resetPassword: (newPassword: string) => Promise<void>;
+  sendPasswordResetEmail: (email: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -109,21 +113,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .select()
         .single();
 
-      if (profileError) {
+      if (profileError || !profile) {
         // If profile creation fails, we should clean up the auth user
         await supabase.auth.admin.deleteUser(authData.user.id);
         throw profileError;
       }
-
-      // Update metadata in auth.users
-      // const { error: updateError } = await supabase.auth.updateUser({
-      //   data: {
-      //     full_name: profileData.full_name,
-      //     role: profileData.role,
-      //   },
-      // });
-
-      // if (updateError) throw updateError;
 
       // Send verification email with code
       const response = await fetch(
@@ -229,8 +223,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         input_code: code,
       });
 
-      console.log('1', code, user.id, data, error);
-
       if (error) throw error;
       if (!data) throw new Error('Invalid verification code');
 
@@ -250,6 +242,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         .single();
 
       if (profileError) throw profileError;
+
+      // Delete the used verification code
+      await supabase.from('verification_codes').delete().eq('code', code);
+
       set({ profile });
     } catch (error) {
       set({
@@ -290,6 +286,74 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to resend code',
+      });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  sendVerificationCode: async (email: string): Promise<void> => {
+    set({ loading: true, error: null });
+    try {
+      if (!email) {
+        throw new Error('Email is required');
+      }
+
+      // Find the user by email in the auth.users table
+      const { data, error } = await supabase.rpc('get_user_id_by_email', {
+        email,
+      });
+
+      if (error) {
+        throw new Error('User not found');
+      }
+
+      const userId = data[0].id;
+      console.log('The user ID', userId);
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error(
+          'Error fetching profile data:',
+          profileError,
+          'Profile data:',
+          profileData
+        );
+        throw new Error('Profile not found');
+      }
+      console.log('The profile data', profileData);
+
+      // Send verification email with code
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/send-verification`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            userId: userId,
+            email: email,
+            fullName: profileData?.full_name || 'User',
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to send verification email');
+      }
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to send verification code',
       });
     } finally {
       set({ loading: false });
@@ -347,6 +411,51 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return ['worker'].includes(targetRole);
       default:
         return false;
+    }
+  },
+
+  resetPassword: async (newPassword: string): Promise<void> => {
+    set({ loading: true, error: null });
+    try {
+      // Check if a session exists
+      const { session } = get();
+      if (!session) {
+        throw new Error(
+          'Auth session missing. Please use the password recovery link.'
+        );
+      }
+
+      // Reset the password
+      const { error: resetError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (resetError) throw resetError;
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error ? error.message : 'Failed to reset password',
+      });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  sendPasswordResetEmail: async (email: string): Promise<void> => {
+    set({ loading: true, error: null });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.EXPO_PUBLIC_APP_URL}/reset-password`,
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error ? error.message : 'Failed to send password reset email',
+      });
+    } finally {
+      set({ loading: false });
     }
   },
 }));

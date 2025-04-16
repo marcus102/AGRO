@@ -11,6 +11,9 @@ interface MissionState {
   setDraftMission: (missions: Partial<Mission> | null) => void;
   updateDraftMission: (updates: Partial<Mission>) => void;
   fetchMissions: () => Promise<void>;
+  fetchMissionByID: (id: string) => Promise<Mission | null>;
+  fetchMissionByIDWithImages: (id: string) => Promise<Mission | null>;
+  fetchMissionByUserId: (userId: string) => Promise<{ data: Mission[] | null; error: any }>;
   createMission: (missions: Partial<Mission>) => Promise<Mission | null>;
   updateMission: (id: string, updates: Partial<Mission>) => Promise<Mission | null>;
   deleteMission: (id: string) => Promise<void>;
@@ -24,11 +27,8 @@ export const useMissionStore = create<MissionState>((set, get) => ({
   draftMission: null,
   loading: false,
   error: null,
-
   setMissions: (missions) => set({ missions: missions }),
-
   setDraftMission: (mission) => set({ draftMission: mission }),
-
   updateDraftMission: (updates) =>
     set((state) => ({
       draftMission: state.draftMission ? { ...state.draftMission, ...updates } : updates,
@@ -53,7 +53,115 @@ export const useMissionStore = create<MissionState>((set, get) => ({
     }
   },
 
-  createMission: async (mission) => {
+  fetchMissionByID: async (id: string): Promise<Mission | null> => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('missions')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error) {
+        set({ error: error.message });
+        return null;
+      }
+      return data as Mission;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch mission';
+      set({ error: errorMessage });
+      return null;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  fetchMissionByIDWithImages: async (id: string): Promise<Mission | null> => {
+    set({ loading: true, error: null });
+    try {
+      // Fetch the mission by ID
+      const { data, error } = await supabase
+        .from('missions')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        set({ error: error.message });
+        return null;
+      }
+
+      if (!data) {
+        set({ error: 'Mission not found' });
+        return null;
+      }
+
+      // Process mission_images to generate signed URLs
+      const mission = data as Mission;
+      const images = mission.mission_images
+        ? await Promise.all(
+            mission.mission_images.map(async (image: string) => {
+              const signedUrl = await generateSignedToken(`${image}`);
+              if (!signedUrl) {
+                console.warn(`File not found: ${image}`);
+              }
+              return signedUrl || '';
+            })
+          )
+        : [];
+
+      // Return the mission with processed images
+      const missionWithImages = { ...mission, mission_images: images };
+      return missionWithImages;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch mission';
+      set({ error: errorMessage });
+      return null;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  fetchMissionByUserId: async (userId: string): Promise<{ data: Mission[] | null; error: any }> => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase
+        .from('missions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        set({ error: error.message });
+        return { data: null, error };
+      }
+
+      // Process mission_images to ensure valid URLs
+      const processedData = await Promise.all(
+        (data as Mission[]).map(async (mission) => {
+          const images = mission.mission_images
+            ? await Promise.all(
+                mission.mission_images.map(async (image: string) => {
+                  const signedUrl = await generateSignedToken(`${image}`);
+                  return signedUrl || '';
+                })
+              )
+            : [];
+          return { ...mission, mission_images: images };
+        })
+      );
+
+      set({ missions: processedData });
+      return { data: processedData, error: null };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch missions';
+      set({ error: errorMessage });
+      return { data: null, error };
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  createMission: async (mission: Partial<Mission>): Promise<Mission | null> => {
     set({ loading: true, error: null });
     try {
       const { data, error } = await supabase
@@ -164,3 +272,23 @@ export const useMissionStore = create<MissionState>((set, get) => ({
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
 }));
+
+async function generateSignedToken(filePath: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.storage
+      .from('images')
+      .createSignedUrl(filePath, 60 * 60 * 10000);
+
+    const signedURL = data?.signedUrl;
+
+    if (error) {
+      console.error('Error generating signed URL:', error.message);
+      return null;
+    }
+
+    return signedURL ?? null;
+  } catch (error) {
+    console.error('Unexpected error generating signed URL:', error);
+    return null;
+  }
+}

@@ -12,42 +12,31 @@ import { router } from 'expo-router';
 import { Mail, ArrowLeft, AlertCircle } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useThemeStore } from '@/stores/theme';
+import { useAuthStore } from '@/stores/auth';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // const [loading, setLoading] = useState(false);
+  // const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const { colors } = useThemeStore();
+  const { user, sendVerificationCode, loading, error, sendPasswordResetEmail } = useAuthStore();
 
-  const handleResetPassword = async () => {
-    if (!email) {
-      setError('Please enter your email address');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
+  const handleSendCode = async () => {
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
-      setSuccess(true);
+      await sendPasswordResetEmail(email);
+      // router.push('/verify-email?mode=reset-password');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
+      // Error handeled by the store
+    } 
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Image
-        source={{ uri: 'https://images.unsplash.com/photo-1595508064774-5ff825ff0f81?q=80&w=1200&auto=format&fit=crop' }}
+        source={{ uri: 'https://images.unsplash.com/photo-1467740100611-36858db27485?q=80&w=2073&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' }}
         style={styles.backgroundImage}
       />
       
@@ -114,11 +103,11 @@ export default function ForgotPasswordScreen() {
               <TouchableOpacity
                 style={[
                   styles.resetButton,
-                  { backgroundColor: colors.primary },
-                  loading && styles.buttonDisabled
+                  { backgroundColor: email.trim() ? colors.primary : colors.muted },
+                  (!email.trim() || loading) && styles.buttonDisabled,
                 ]}
-                onPress={handleResetPassword}
-                disabled={loading}
+                onPress={handleSendCode}
+                disabled={!email.trim() || loading} // Disable if email is empty or loading
               >
                 <Text style={[styles.resetButtonText, { color: colors.card }]}>
                   {loading ? 'Sending...' : 'Send Reset Instructions'}

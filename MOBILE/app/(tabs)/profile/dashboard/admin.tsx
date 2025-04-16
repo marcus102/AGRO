@@ -1,11 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, FlatList, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useThemeStore } from '@/stores/theme';
 import { Users, Briefcase, CheckCircle, TrendingUp, ChevronRight } from 'lucide-react-native';
 import { LineChart } from 'react-native-chart-kit';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StatCard } from '@/components/StatCard';
+import { SectionHeader } from '@/components/SectionHeader';
 
 const mockData = {
+  stats: [
+    { title: 'Utilisateurs totaux', value: 1250, icon: Users },
+    { title: 'Missions actives', value: 85, icon: Briefcase },
+    { title: 'Missions terminées', value: 342, icon: CheckCircle },
+    { title: 'Taux de succès', value: '94.5%', icon: TrendingUp },
+  ],
   users: {
     total: 1250,
     breakdown: {
@@ -34,24 +42,6 @@ const mockData = {
 
 export default function AdminDashboardScreen() {
   const { colors } = useThemeStore();
-
-  const StatCard = ({ icon: Icon, title, value, subtitle }) => (
-    <Animated.View 
-      entering={FadeInDown}
-      style={[styles.statCard, { backgroundColor: colors.card }]}
-    >
-      <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-        <Icon size={24} color={colors.primary} />
-      </View>
-      <View style={styles.statContent}>
-        <Text style={[styles.statTitle, { color: colors.muted }]}>{title}</Text>
-        <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
-        {subtitle && (
-          <Text style={[styles.statSubtitle, { color: colors.muted }]}>{subtitle}</Text>
-        )}
-      </View>
-    </Animated.View>
-  );
 
   const RoleBreakdown = () => (
     <View style={[styles.section, { backgroundColor: colors.card }]}>
@@ -167,111 +157,49 @@ export default function AdminDashboardScreen() {
   );
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor: colors.background }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          Tableau de bord
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.muted }]}>
-          Vue d'ensemble du système
-        </Text>
-      </View>
-
-      <View style={styles.statsGrid}>
-        <StatCard
-          icon={Users}
-          title="Utilisateurs totaux"
-          value={mockData.users.total}
-          subtitle="+12% ce mois"
-        />
-        <StatCard
-          icon={Briefcase}
-          title="Missions actives"
-          value={mockData.jobs.active}
-          subtitle="85 en cours"
-        />
-        <StatCard
-          icon={CheckCircle}
-          title="Missions terminées"
-          value={mockData.jobs.completed}
-          subtitle="94.5% de succès"
-        />
-        <StatCard
-          icon={TrendingUp}
-          title="Taux d'engagement"
-          value={mockData.engagement.retentionRate}
-          subtitle="76% de rétention"
-        />
-      </View>
-
-      <RoleBreakdown />
-      <EngagementMetrics />
-      <ActivityChart />
-      <QuickActions />
-    </ScrollView>
+    <FlatList
+      data={[{ type: 'stats' }, { type: 'roleBreakdown' }, { type: 'engagementMetrics' }, { type: 'activityChart' }, { type: 'quickActions' }]}
+      keyExtractor={(item, index) => `${item.type}-${index}`}
+      renderItem={({ item }) => {
+        if (item.type === 'stats') {
+          return (
+            <>
+              <SectionHeader title="Statistiques" colors={colors} />
+              <View style={styles.statsGrid}>
+                {mockData.stats.map((stat, index) => (
+                  <StatCard
+                    key={index}
+                    icon={stat.icon}
+                    title={stat.title}
+                    value={stat.value}
+                    colors={colors}
+                  />
+                ))}
+              </View>
+            </>
+          );
+        } else if (item.type === 'roleBreakdown') {
+          return <RoleBreakdown />;
+        } else if (item.type === 'engagementMetrics') {
+          return <EngagementMetrics />;
+        } else if (item.type === 'activityChart') {
+          return <ActivityChart />;
+        } else if (item.type === 'quickActions') {
+          return <QuickActions />;
+        }
+        return null;
+      }}
+      contentContainerStyle={{ padding: 12, backgroundColor: colors.background }}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    padding: 24,
-  },
-  title: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     padding: 12,
     gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: '45%',
-    padding: 16,
-    borderRadius: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  statContent: {
-    flex: 1,
-  },
-  statTitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  statSubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
   },
   section: {
     margin: 12,

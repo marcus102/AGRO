@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Platform,
   Image,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -35,7 +34,7 @@ import {
 } from '@/types/mission';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from '@/lib/supabase'; // Ensure you have a Supabase client setup
+import { supabase } from '@/lib/supabase';
 import * as FileSystem from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 

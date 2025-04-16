@@ -14,6 +14,7 @@ import { useThemeStore } from '@/stores/theme';
 import { useAuthStore } from '@/stores/auth';
 import { isValidVerificationCode } from '@/lib/supabase';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useLocalSearchParams } from 'expo-router'; // Import this to get query parameters
 
 const CODE_LENGTH = 6;
 
@@ -24,6 +25,9 @@ export default function VerifyEmailScreen() {
   const [timer, setTimer] = useState(30);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef<TextInput[]>([]);
+
+  // Get the mode (sign-up or reset-password) from the query parameters
+  const { mode } = useLocalSearchParams();
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -76,7 +80,11 @@ export default function VerifyEmailScreen() {
 
     try {
       await verifyEmail(code);
-      router.replace('/upload-documents');
+
+      // Navigate based on the mode
+      if (mode === 'sign-up') {
+        router.replace('/upload-documents');
+      }
     } catch (err) {
       // Error is handled by the store
     }

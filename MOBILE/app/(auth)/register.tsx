@@ -121,7 +121,8 @@ export default function RegisterScreen() {
         verification_status: 'not_verified',
         docs_status: 'pending',
         profile_picture: null,
-        location: null,
+        actual_location: null,
+        availability_locations: [],
         portfolio: [],
         bio: null,
         certifications: [],
@@ -132,7 +133,7 @@ export default function RegisterScreen() {
       });
 
       // Navigate to verification
-      router.push('/verify-email');
+      router.push('/verify-email?mode=sign-up');
     } catch (err) {
       // error handeled by the store
     }

@@ -11,6 +11,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Lock, Eye, EyeOff, AlertCircle, ArrowLeft } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
@@ -20,9 +21,10 @@ export default function ResetPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // const [loading, setLoading] = useState(false);
+  // const [error, setError] = useState<string | null>(null);
   const { colors } = useThemeStore();
+  const { resetPassword, error, loading } = useAuthStore();
 
   const validatePassword = (password: string) => {
     if (password.length < 8) {
@@ -44,48 +46,41 @@ export default function ResetPasswordScreen() {
   };
 
   const handleResetPassword = async () => {
-    setError(null);
-
     // Validate passwords
     const passwordError = validatePassword(password);
     if (passwordError) {
-      setError(passwordError);
+      console.error(passwordError); // Log the error for debugging
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
+      throw new Error('Passwords do not match');
     }
 
-    setLoading(true);
-
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password,
-      });
-
-      if (error) throw error;
+      // Call the resetPassword function from the auth store
+      await resetPassword(password);
 
       // Success - redirect to login
       router.replace('/login');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+      // Error is already handled by the store
+      console.error(err); // Log the error for debugging
     }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Image
-        source={{ uri: 'https://images.unsplash.com/photo-1595508064774-5ff825ff0f81?q=80&w=1200&auto=format&fit=crop' }}
+        source={{
+          uri: 'https://images.unsplash.com/photo-1595508064774-5ff825ff0f81?q=80&w=1200&auto=format&fit=crop',
+        }}
         style={styles.backgroundImage}
       />
-      
+
       <View style={styles.overlay} />
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.backButton, { backgroundColor: colors.card }]}
         onPress={() => router.back()}
       >
@@ -93,10 +88,7 @@ export default function ResetPasswordScreen() {
       </TouchableOpacity>
 
       <View style={styles.content}>
-        <Animated.View 
-          entering={FadeInDown.delay(200)}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(200)} style={styles.header}>
           <Text style={[styles.title, { color: colors.card }]}>
             Reset Password
           </Text>
@@ -105,21 +97,30 @@ export default function ResetPasswordScreen() {
           </Text>
         </Animated.View>
 
-        <Animated.View 
+        <Animated.View
           entering={FadeInDown.delay(400)}
           style={[styles.form, { backgroundColor: colors.card }]}
         >
           {error && (
-            <View style={[styles.errorContainer, { backgroundColor: colors.error + '20' }]}>
+            <View
+              style={[
+                styles.errorContainer,
+                { backgroundColor: colors.error + '20' },
+              ]}
+            >
               <AlertCircle size={20} color={colors.error} />
-              <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+              <Text style={[styles.errorText, { color: colors.error }]}>
+                {error}
+              </Text>
             </View>
           )}
 
-          <View style={[
-            styles.inputContainer,
-            { backgroundColor: colors.background }
-          ]}>
+          <View
+            style={[
+              styles.inputContainer,
+              { backgroundColor: colors.background },
+            ]}
+          >
             <Lock size={20} color={colors.primary} />
             <TextInput
               style={[styles.input, { color: colors.text }]}
@@ -141,10 +142,12 @@ export default function ResetPasswordScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={[
-            styles.inputContainer,
-            { backgroundColor: colors.background }
-          ]}>
+          <View
+            style={[
+              styles.inputContainer,
+              { backgroundColor: colors.background },
+            ]}
+          >
             <Lock size={20} color={colors.primary} />
             <TextInput
               style={[styles.input, { color: colors.text }]}
@@ -171,11 +174,9 @@ export default function ResetPasswordScreen() {
               Password Requirements:
             </Text>
             <Text style={[styles.requirementText, { color: colors.muted }]}>
-              • At least 8 characters long{'\n'}
-              • One uppercase letter{'\n'}
-              • One lowercase letter{'\n'}
-              • One number{'\n'}
-              • One special character
+              • At least 8 characters long{'\n'}• One uppercase letter{'\n'}•
+              One lowercase letter{'\n'}• One number{'\n'}• One special
+              character
             </Text>
           </View>
 
@@ -183,7 +184,7 @@ export default function ResetPasswordScreen() {
             style={[
               styles.resetButton,
               { backgroundColor: colors.primary },
-              loading && styles.buttonDisabled
+              loading && styles.buttonDisabled,
             ]}
             onPress={handleResetPassword}
             disabled={loading}
@@ -193,7 +194,7 @@ export default function ResetPasswordScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.loginLink}
             onPress={() => router.push('/login')}
           >

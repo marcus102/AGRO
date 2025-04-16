@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Switch } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+  Switch,
+} from 'react-native';
 import { router } from 'expo-router';
 import {
   User,
@@ -11,7 +19,7 @@ import {
   Shield,
   Info,
   ChevronRight,
-  LogOut
+  LogOut,
 } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
@@ -20,24 +28,48 @@ import { LANGUAGES } from '@/types/language';
 import { LanguageModal } from '@/components/modals/LanguageModal';
 import { PasswordModal } from '@/components/modals/PasswordModal';
 
-const MenuItem = ({ icon: Icon, title, subtitle, onPress, showToggle, isToggled, showChevron = true }) => {
+type MenuItemProps = {
+  icon: React.ComponentType<{ size: number; color: string }>;
+  title: string;
+  subtitle?: string;
+  onPress: () => void;
+  showToggle?: boolean;
+  isToggled?: boolean;
+  showChevron?: boolean;
+};
+
+const MenuItem = ({
+  icon: Icon,
+  title,
+  subtitle,
+  onPress,
+  showToggle,
+  isToggled,
+  showChevron = true,
+}: MenuItemProps) => {
   const { colors } = useThemeStore();
-  
+
   return (
-    <TouchableOpacity 
-      style={[styles.menuItem, { backgroundColor: colors.card }]} 
+    <TouchableOpacity
+      style={[styles.menuItem, { backgroundColor: colors.card }]}
       onPress={onPress}
     >
       <View style={styles.menuItemIcon}>
         <Icon size={24} color={colors.primary} />
       </View>
       <View style={styles.menuItemContent}>
-        <Text style={[styles.menuItemTitle, { color: colors.text }]}>{title}</Text>
-        {subtitle && <Text style={[styles.menuItemSubtitle, { color: colors.muted }]}>{subtitle}</Text>}
+        <Text style={[styles.menuItemTitle, { color: colors.text }]}>
+          {title}
+        </Text>
+        {subtitle && (
+          <Text style={[styles.menuItemSubtitle, { color: colors.muted }]}>
+            {subtitle}
+          </Text>
+        )}
       </View>
       {showToggle ? (
-        <Switch 
-          value={isToggled} 
+        <Switch
+          value={isToggled}
           onValueChange={onPress}
           trackColor={{ false: colors.border, true: colors.primary + '40' }}
           thumbColor={isToggled ? colors.primary : colors.muted}
@@ -53,14 +85,14 @@ const MenuItem = ({ icon: Icon, title, subtitle, onPress, showToggle, isToggled,
 export default function SettingsScreen() {
   const { theme, colors, toggleTheme } = useThemeStore();
   const { language } = useLanguageStore();
-  const logout = useAuthStore(state => state.logout);
+  const { signOut } = useAuthStore();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  const selectedLanguage = LANGUAGES.find(lang => lang.code === language);
+  const selectedLanguage = LANGUAGES.find((lang) => lang.code === language);
 
   const handleSignOut = () => {
-    logout();
+    signOut();
     router.replace('/(auth)/login');
   };
 
@@ -69,9 +101,13 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={[styles.section, { borderColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.muted }]}>Général</Text>
+        <Text style={[styles.sectionTitle, { color: colors.muted }]}>
+          Général
+        </Text>
         <MenuItem
           icon={Globe}
           title="Langue"
@@ -93,7 +129,9 @@ export default function SettingsScreen() {
       </View>
 
       <View style={[styles.section, { borderColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.muted }]}>Notifications</Text>
+        <Text style={[styles.sectionTitle, { color: colors.muted }]}>
+          Notifications
+        </Text>
         <MenuItem
           icon={Bell}
           title="Paramètres des notifications"
@@ -102,7 +140,9 @@ export default function SettingsScreen() {
       </View>
 
       <View style={[styles.section, { borderColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.muted }]}>Sécurité</Text>
+        <Text style={[styles.sectionTitle, { color: colors.muted }]}>
+          Sécurité
+        </Text>
         <MenuItem
           icon={KeyRound}
           title="Modifier le mot de passe"
@@ -116,7 +156,9 @@ export default function SettingsScreen() {
       </View>
 
       <View style={[styles.section, { borderColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.muted }]}>À propos</Text>
+        <Text style={[styles.sectionTitle, { color: colors.muted }]}>
+          À propos
+        </Text>
         <MenuItem
           icon={Info}
           title="Version"
@@ -124,11 +166,7 @@ export default function SettingsScreen() {
           showChevron={false}
           onPress={() => {}}
         />
-        <MenuItem
-          icon={Info}
-          title="Mentions légales"
-          onPress={() => {}}
-        />
+        <MenuItem icon={Info} title="Mentions légales" onPress={() => {}} />
         <MenuItem
           icon={Shield}
           title="Politique de confidentialité"
@@ -136,12 +174,14 @@ export default function SettingsScreen() {
         />
       </View>
 
-      <TouchableOpacity 
-        style={[styles.logoutButton, { backgroundColor: colors.error + '20' }]} 
+      <TouchableOpacity
+        style={[styles.logoutButton, { backgroundColor: colors.error + '20' }]}
         onPress={handleSignOut}
       >
         <LogOut size={24} color={colors.error} />
-        <Text style={[styles.logoutText, { color: colors.error }]}>Déconnexion</Text>
+        <Text style={[styles.logoutText, { color: colors.error }]}>
+          Déconnexion
+        </Text>
       </TouchableOpacity>
 
       <LanguageModal
