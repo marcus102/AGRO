@@ -185,6 +185,29 @@ function CreateJobScreen() {
 
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: colors.text }]}>
+          Spécialisation de l'acteur
+        </Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Briefcase size={20} color={colors.primary} style={styles.inputIcon} />
+          <TextInput
+            style={[styles.input, { color: colors.text }]}
+            value={draftMission?.actor_specialization}
+            onChangeText={(text) =>
+              updateDraftMission({ actor_specialization: text })
+            }
+            placeholder="Ex: Récolte, Plantation, etc."
+            placeholderTextColor={colors.muted}
+          />
+        </View>
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={[styles.label, { color: colors.text }]}>
           Titre de la mission
         </Text>
         <View
@@ -251,6 +274,36 @@ function CreateJobScreen() {
             }
             keyboardType="numeric"
             placeholder="Nombre de personnes"
+            placeholderTextColor={colors.muted}
+          />
+        </View>
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={[styles.label, { color: colors.text }]}>Surface du terrain</Text>
+        <View
+          style={[
+            styles.inputWrapper,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <TextInput
+            style={[styles.input, { color: colors.text }]}
+            value={draftMission?.surface_area}
+            onChangeText={(text) =>
+              updateDraftMission({ surface_area: text })
+            }
+            keyboardType="numeric"
+            placeholder="Ex: 100"
+            placeholderTextColor={colors.muted}
+          />
+          <TextInput
+            style={[styles.input, { color: colors.text }]}
+            value={draftMission?.surface_unit}
+            onChangeText={(text) =>
+              updateDraftMission({ surface_unit: text })
+            }
+            placeholder="Ex: hectares"
             placeholderTextColor={colors.muted}
           />
         </View>
@@ -640,7 +693,9 @@ function CreateJobScreen() {
         <Text style={[styles.reviewValue, { color: colors.text }]}>
           {draftMission?.needed_actor === 'technician'
             ? 'Technicien'
-            : 'Travailleur'}
+            : draftMission?.needed_actor === 'worker'
+            ? 'Travailleur'
+            : 'Entrepreneur'}
         </Text>
 
         <Text style={[styles.reviewLabel, { color: colors.muted }]}>Titre</Text>
@@ -653,6 +708,13 @@ function CreateJobScreen() {
         </Text>
         <Text style={[styles.reviewValue, { color: colors.text }]}>
           {draftMission?.mission_description}
+        </Text>
+
+        <Text style={[styles.reviewLabel, { color: colors.muted }]}>
+          Spécialisation de l'acteur
+        </Text>
+        <Text style={[styles.reviewValue, { color: colors.text }]}>
+          {draftMission?.actor_specialization}
         </Text>
       </View>
 
@@ -679,6 +741,13 @@ function CreateJobScreen() {
         </Text>
         <Text style={[styles.reviewValue, { color: colors.text }]}>
           {draftMission?.needed_actor_amount}
+        </Text>
+
+        <Text style={[styles.reviewLabel, { color: colors.muted }]}>
+          Surface
+        </Text>
+        <Text style={[styles.reviewValue, { color: colors.text }]}>
+          {draftMission?.surface_area} {draftMission?.surface_unit}
         </Text>
       </View>
 
@@ -833,7 +902,10 @@ function CreateJobScreen() {
           draftMission?.needed_actor &&
           draftMission?.mission_title &&
           draftMission?.mission_description &&
-          draftMission?.needed_actor_amount
+          draftMission?.needed_actor_amount &&
+          draftMission?.actor_specialization &&
+          draftMission?.surface_area &&
+          draftMission?.surface_unit
         );
       case 'logistics':
         return !!(

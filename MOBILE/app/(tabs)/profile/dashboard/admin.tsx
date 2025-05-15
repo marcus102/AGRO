@@ -1,54 +1,132 @@
-import React from 'react';
-import { View, FlatList, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import {
+  View,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
 import { useThemeStore } from '@/stores/theme';
-import { Users, Briefcase, CheckCircle, TrendingUp, ChevronRight } from 'lucide-react-native';
+import { Users, Briefcase, CheckCircle, TrendingUp } from 'lucide-react-native';
 import { LineChart } from 'react-native-chart-kit';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { StatCard } from '@/components/StatCard';
 import { SectionHeader } from '@/components/SectionHeader';
-
-const mockData = {
-  stats: [
-    { title: 'Utilisateurs totaux', value: 1250, icon: Users },
-    { title: 'Missions actives', value: 85, icon: Briefcase },
-    { title: 'Missions terminées', value: 342, icon: CheckCircle },
-    { title: 'Taux de succès', value: '94.5%', icon: TrendingUp },
-  ],
-  users: {
-    total: 1250,
-    breakdown: {
-      entrepreneurs: 320,
-      technicians: 480,
-      workers: 450,
-    },
-  },
-  jobs: {
-    active: 85,
-    completed: 342,
-    successRate: 94.5,
-  },
-  engagement: {
-    dailyActiveUsers: 780,
-    averageSessionTime: '24m',
-    retentionRate: '76%',
-  },
-  chartData: {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [{
-      data: [20, 45, 28, 80, 99, 120],
-    }],
-  },
-};
+import * as Linking from 'expo-linking';
+import { useAuthStore } from '@/stores/auth';
+import { useMissionStore } from '@/stores/mission';
 
 export default function AdminDashboardScreen() {
   const { colors } = useThemeStore();
+  const { profiles, fetchProfiles } = useAuthStore();
+  const { missions, fetchMissions } = useMissionStore();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      await fetchProfiles();
+      await fetchMissions();
+    };
+
+    fetchData();
+  }, [fetchProfiles, fetchMissions]);
+
+  // Calculate statistics from real data
+  const totalUsers = profiles.length;
+  const activeMissions = missions.filter(
+    (mission) => mission.status === 'in_review' || mission.status === 'online'
+  ).length;
+  const completedMissions = missions.filter(
+    (mission) => mission.status === 'completed'
+  ).length;
+  const successRate =
+    completedMissions > 0
+      ? (
+          (completedMissions / (completedMissions + activeMissions)) *
+          100
+        ).toFixed(1) + '%'
+      : '0%';
+
+  const stats = [
+    { title: 'Utilisateurs totaux', value: totalUsers, icon: Users },
+    { title: 'Missions actives', value: activeMissions, icon: Briefcase },
+    {
+      title: 'Missions terminées',
+      value: completedMissions,
+      icon: CheckCircle,
+    },
+    { title: 'Taux de succès', value: successRate, icon: TrendingUp },
+  ];
+
+  // Calculate user breakdown by role
+  const userBreakdown = profiles.reduce(
+    (acc: Record<string, number>, profile) => {
+      acc[profile.role] = (acc[profile.role] || 0) + 1;
+      return acc;
+    },
+    {}
+  );
+
+  // Prepare chart data based on mission creation dates
+  const chartData = useMemo(() => {
+    // Group missions by month of creation
+    const monthlyData = missions.reduce((acc, mission) => {
+      if (!mission.created_at) return acc;
+
+      const date = new Date(mission.created_at);
+      const month = date.getMonth();
+      const year = date.getFullYear();
+      const key = `${year}-${month}`;
+
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Get last 6 months
+    const months = [];
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const now = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now);
+      date.setMonth(now.getMonth() - i);
+      const month = date.getMonth();
+      const year = date.getFullYear();
+      const key = `${year}-${month}`;
+
+      months.push({
+        name: `${monthNames[month]} ${year.toString().slice(2)}`,
+        count: monthlyData[key] || 0,
+      });
+    }
+
+    return {
+      labels: months.map((m) => m.name),
+      datasets: [
+        {
+          data: months.map((m) => m.count),
+        },
+      ],
+    };
+  }, [missions]);
 
   const RoleBreakdown = () => (
     <View style={[styles.section, { backgroundColor: colors.card }]}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         Répartition des utilisateurs
       </Text>
-      {Object.entries(mockData.users.breakdown).map(([role, count], index) => (
+      {Object.entries(userBreakdown).map(([role, count], index) => (
         <View key={role} style={styles.roleItem}>
           <View style={styles.roleInfo}>
             <Text style={[styles.roleName, { color: colors.text }]}>
@@ -59,14 +137,14 @@ export default function AdminDashboardScreen() {
             </Text>
           </View>
           <View style={styles.progressBarContainer}>
-            <View 
+            <View
               style={[
                 styles.progressBar,
-                { 
+                {
                   backgroundColor: colors.primary,
-                  width: `${(count / mockData.users.total) * 100}%`,
+                  width: `${(count / totalUsers) * 100}%`,
                 },
-              ]} 
+              ]}
             />
           </View>
         </View>
@@ -82,7 +160,7 @@ export default function AdminDashboardScreen() {
       <View style={styles.engagementGrid}>
         <View style={styles.engagementItem}>
           <Text style={[styles.engagementValue, { color: colors.text }]}>
-            {mockData.engagement.dailyActiveUsers}
+            {Math.floor(totalUsers * 0.6)}
           </Text>
           <Text style={[styles.engagementLabel, { color: colors.muted }]}>
             Utilisateurs actifs / jour
@@ -90,7 +168,7 @@ export default function AdminDashboardScreen() {
         </View>
         <View style={styles.engagementItem}>
           <Text style={[styles.engagementValue, { color: colors.text }]}>
-            {mockData.engagement.averageSessionTime}
+            24m
           </Text>
           <Text style={[styles.engagementLabel, { color: colors.muted }]}>
             Temps moyen / session
@@ -98,7 +176,7 @@ export default function AdminDashboardScreen() {
         </View>
         <View style={styles.engagementItem}>
           <Text style={[styles.engagementValue, { color: colors.text }]}>
-            {mockData.engagement.retentionRate}
+            76%
           </Text>
           <Text style={[styles.engagementLabel, { color: colors.muted }]}>
             Taux de rétention
@@ -111,10 +189,10 @@ export default function AdminDashboardScreen() {
   const ActivityChart = () => (
     <View style={[styles.section, { backgroundColor: colors.card }]}>
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Activité des utilisateurs
+        Activité des utilisateurs (missions créées)
       </Text>
       <LineChart
-        data={mockData.chartData}
+        data={chartData}
         width={350}
         height={220}
         chartConfig={{
@@ -134,39 +212,44 @@ export default function AdminDashboardScreen() {
     </View>
   );
 
-  const QuickActions = () => (
-    <View style={[styles.section, { backgroundColor: colors.card }]}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Actions rapides
-      </Text>
-      {[
-        'Gérer les utilisateurs',
-        'Configurer les permissions',
-        'Voir les rapports',
-        'Paramètres système',
-      ].map((action, index) => (
-        <TouchableOpacity 
-          key={index}
-          style={[styles.actionItem, { borderBottomColor: colors.border }]}
-        >
-          <Text style={[styles.actionText, { color: colors.text }]}>{action}</Text>
-          <ChevronRight size={20} color={colors.muted} />
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
   return (
     <FlatList
-      data={[{ type: 'stats' }, { type: 'roleBreakdown' }, { type: 'engagementMetrics' }, { type: 'activityChart' }, { type: 'quickActions' }]}
+      data={[
+        { type: 'stats' },
+        { type: 'roleBreakdown' },
+        { type: 'engagementMetrics' },
+        { type: 'activityChart' },
+      ]}
       keyExtractor={(item, index) => `${item.type}-${index}`}
+      ListHeaderComponent={
+        <TouchableOpacity
+          style={{
+            backgroundColor: colors.primary,
+            padding: 12,
+            borderRadius: 8,
+            alignItems: 'center',
+            margin: 12,
+          }}
+          onPress={() => Linking.openURL('http://localhost:5173/admin')}
+        >
+          <Text
+            style={{
+              color: '#fff',
+              fontFamily: 'Inter-SemiBold',
+              fontSize: 16,
+            }}
+          >
+            Aller au dashboard web admin
+          </Text>
+        </TouchableOpacity>
+      }
       renderItem={({ item }) => {
         if (item.type === 'stats') {
           return (
             <>
               <SectionHeader title="Statistiques" colors={colors} />
               <View style={styles.statsGrid}>
-                {mockData.stats.map((stat, index) => (
+                {stats.map((stat, index) => (
                   <StatCard
                     key={index}
                     icon={stat.icon}
@@ -184,12 +267,13 @@ export default function AdminDashboardScreen() {
           return <EngagementMetrics />;
         } else if (item.type === 'activityChart') {
           return <ActivityChart />;
-        } else if (item.type === 'quickActions') {
-          return <QuickActions />;
         }
         return null;
       }}
-      contentContainerStyle={{ padding: 12, backgroundColor: colors.background }}
+      contentContainerStyle={{
+        padding: 12,
+        backgroundColor: colors.background,
+      }}
     />
   );
 }
@@ -262,16 +346,5 @@ const styles = StyleSheet.create({
   chart: {
     marginVertical: 8,
     borderRadius: 16,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  actionText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
   },
 });

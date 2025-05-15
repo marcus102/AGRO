@@ -13,7 +13,6 @@ import { router } from 'expo-router';
 import {
   Camera,
   MapPin,
-  Mail,
   Phone,
   Globe,
   FileText,
@@ -33,9 +32,9 @@ interface FormData {
   phone: string;
   actual_location: string;
   bio: string;
+  specialization: string[];
   portfolio: string[];
   certifications: string[];
-  education: string[];
   languages: string[];
   skills: string[];
   work_experience: string[];
@@ -147,18 +146,18 @@ export default function EditProfileScreen() {
     phone: '',
     actual_location: '',
     bio: '',
+    specialization: [],
     portfolio: [],
     certifications: [],
-    education: [],
     languages: [],
     skills: [],
     work_experience: [],
     availability_locations: [],
   });
   const [newEntries, setNewEntries] = useState<Record<string, string>>({
+    specialization: '',
     portfolio: '',
     certifications: '',
-    education: '',
     languages: '',
     skills: '',
     work_experience: '',
@@ -173,11 +172,13 @@ export default function EditProfileScreen() {
         phone: profile.phone || '',
         actual_location: profile.actual_location || '',
         bio: profile.bio || '',
+        specialization: Array.isArray(profile.specialization)
+          ? profile.specialization
+          : [],
         portfolio: Array.isArray(profile.portfolio) ? profile.portfolio : [],
         certifications: Array.isArray(profile.certifications)
           ? profile.certifications
           : [],
-        education: Array.isArray(profile.education) ? profile.education : [],
         languages: Array.isArray(profile.languages) ? profile.languages : [],
         skills: Array.isArray(profile.skills) ? profile.skills : [],
         work_experience: Array.isArray(profile.work_experience)
@@ -382,6 +383,20 @@ export default function EditProfileScreen() {
         />
 
         <MemoizedArrayInputSection
+          field="specialization"
+          label="Spécialisation"
+          Icon={FileText}
+          items={formData.specialization}
+          newEntryValue={newEntries.specialization}
+          onAdd={() => addToArray('specialization')}
+          onRemove={(index) => removeFromArray('specialization', index)}
+          onEntryChange={(text) =>
+            setNewEntries((prev) => ({ ...prev, specialization: text }))
+          }
+          colors={colors}
+        />
+
+        <MemoizedArrayInputSection
           field="certifications"
           label="Certifications"
           Icon={FileText}
@@ -395,7 +410,7 @@ export default function EditProfileScreen() {
           colors={colors}
         />
 
-        <MemoizedArrayInputSection
+        {/* <MemoizedArrayInputSection
           field="education"
           label="Formation"
           Icon={FileText}
@@ -407,7 +422,7 @@ export default function EditProfileScreen() {
             setNewEntries((prev) => ({ ...prev, education: text }))
           }
           colors={colors}
-        />
+        /> */}
 
         <MemoizedArrayInputSection
           field="languages"

@@ -11,6 +11,7 @@
     - document_status_type: enum for document statuses
 
   2. New Tables
+    - payments: Stores payment information
     - missions: Stores job listings and their details
     - ratings: Stores user and system ratings
     - documents: Stores user documents
@@ -28,30 +29,67 @@ CREATE TYPE advantage_type AS ENUM ('transport', 'meal', 'accommodation', 'perfo
 CREATE TYPE rating_type AS ENUM ('user', 'system');
 CREATE TYPE price_status_type AS ENUM ('current', 'not_current');
 CREATE TYPE document_status_type AS ENUM ('online', 'offline', 'removed', 'draft');
+CREATE TYPE payment_status_type AS ENUM ('pending', 'completed', 'failed', 'canceled');
+CREATE TYPE payment_type AS ENUM ('incoming', 'outgoing');
+CREATE TYPE payment_method AS ENUM ('credit_card', 'bank_transfer', 'cash', 'mobile_payment', 'other');
+
+-- Create payments table first since missions references it
+CREATE TABLE IF NOT EXISTS payments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), 
+  user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, 
+  user_phone text NOT NULL, 
+  payment_method payment_method NOT NULL, 
+  payment_reference text NOT NULL, 
+  payment_type payment_type NOT NULL, 
+  amount numeric(10, 2) NOT NULL CHECK (amount > 0), 
+  otp_code text NOT NULL, 
+  status payment_status_type NOT NULL DEFAULT 'pending', 
+  description text, 
+  metadata jsonb DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(), 
+  updated_at timestamptz NOT NULL DEFAULT now() 
+);
 
 -- Create missions table
 CREATE TABLE IF NOT EXISTS missions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  mission_images text[] DEFAULT '{}',
-  needed_actor user_role NOT NULL,
-  needed_actor_amount text NOT NULL,
+  payment_id uuid REFERENCES payments(id) ON DELETE CASCADE,
+  
+  -- Mission Metadata
   mission_title text NOT NULL,
   mission_description text NOT NULL,
   location text NOT NULL,
   start_date date NOT NULL,
   end_date date NOT NULL,
-  required_experience_level experience_level_type NOT NULL,
-  equipment boolean DEFAULT false,
-  proposed_advantages advantage_type[] DEFAULT '{}',
-  original_price jsonb NOT NULL DEFAULT '{"price": "0", "status": "current"}'::jsonb,
-  adjustment_price jsonb NOT NULL DEFAULT '{"price": "0", "status": "not_current"}'::jsonb,
-  final_price text NOT NULL,
   status mission_status_type NOT NULL DEFAULT 'in_review',
-  is_promoted jsonb NOT NULL DEFAULT '{"status": "in_review", "amount": "0", "duration": "0", "start_date": null, "end_date": null}'::jsonb,
+  
+  -- Actor Requirements
+  needed_actor user_role NOT NULL,
+  actor_specialization jsonb DEFAULT '{}',
+  needed_actor_amount INTEGER NOT NULL,  -- Changed from text
+  required_experience_level experience_level_type NOT NULL,
   applicants uuid[] DEFAULT '{}',
+  
+  -- Farming-Specific Fields (New)
+  surface_area NUMERIC CHECK (surface_area > 0),  -- Added
+  surface_unit TEXT CHECK (surface_unit IN ('hectares', 'acres')),  -- Optional
+  
+  -- Financials
+  original_price jsonb NOT NULL DEFAULT '{"price": 0, "status": "current"}'::jsonb,  -- Price as numeric
+  adjustment_price jsonb NOT NULL DEFAULT '{"price": 0, "status": "not_current"}'::jsonb,  -- Price as numeric
+  final_price NUMERIC NOT NULL,  -- Changed from text
+  proposed_advantages advantage_type[] DEFAULT '{}',
+  
+  -- Logistics
+  equipment boolean DEFAULT false,
+  mission_images text[] DEFAULT '{}',
+  
+  -- Technical
+  metadata jsonb DEFAULT '{}',
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
   
   -- Add constraints
   CONSTRAINT chk_dates CHECK (end_date >= start_date),
@@ -63,12 +101,10 @@ CREATE TABLE IF NOT EXISTS missions (
     (adjustment_price->>'price')::numeric >= 0 AND
     adjustment_price->>'status' IN ('current', 'not_current')
   ),
-  CONSTRAINT chk_is_promoted CHECK (
-    is_promoted->>'status' IN ('in_review', 'online', 'expired', 'paused', 'canceled', 'rejected') AND
-    (is_promoted->>'amount')::numeric >= 0 AND
-    (is_promoted->>'duration')::numeric >= 0
-  )
-);
+  CONSTRAINT chk_final_price CHECK ((final_price)::numeric >= 0)
+
+-- Update payments table to add mission_id after missions table is created
+ALTER TABLE payments ADD COLUMN mission_id uuid REFERENCES missions(id) ON DELETE CASCADE DEFAULT NULL;
 
 -- Create ratings table
 CREATE TABLE IF NOT EXISTS ratings (
@@ -77,6 +113,7 @@ CREATE TABLE IF NOT EXISTS ratings (
   rating_type rating_type NOT NULL,
   rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
   comment text,
+  metadata jsonb DEFAULT '{}'::jsonb,
   rated_user uuid REFERENCES profiles(id) ON DELETE CASCADE,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -99,6 +136,7 @@ CREATE TABLE IF NOT EXISTS documents (
   theme text NOT NULL,
   tags text[] DEFAULT '{}',
   status document_status_type NOT NULL DEFAULT 'draft',
+  metadata jsonb DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
 
@@ -107,11 +145,38 @@ CREATE TABLE IF NOT EXISTS documents (
 );
 
 -- Enable RLS
+ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE missions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ratings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 
--- missions policies
+-- Payments policies
+CREATE POLICY "Users can read their own payments"
+  ON payments
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create payments"
+  ON payments
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own payments"
+  ON payments
+  FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own payments"
+  ON payments
+  FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+-- Missions policies
 CREATE POLICY "Users can read all missions"
   ON missions
   FOR SELECT
@@ -158,21 +223,18 @@ CREATE POLICY "Users can update own ratings"
   WITH CHECK (auth.uid() = user_id);
 
 -- Documents policies
--- Policy: Users can read all documents with status 'online'
 CREATE POLICY "Users can read online documents"
   ON documents
   FOR SELECT
   TO authenticated
   USING (status = 'online');
 
--- Policy: Users can create their own documents
 CREATE POLICY "Users can create documents"
   ON documents
   FOR INSERT
   TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
--- Policy: Users can update their own documents
 CREATE POLICY "Users can update own documents"
   ON documents
   FOR UPDATE
@@ -180,7 +242,6 @@ CREATE POLICY "Users can update own documents"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
--- Policy: Users can delete their own documents
 CREATE POLICY "Users can delete own documents"
   ON documents
   FOR DELETE
@@ -188,6 +249,12 @@ CREATE POLICY "Users can delete own documents"
   USING (auth.uid() = user_id);
 
 -- Create indexes
+CREATE INDEX idx_payments_user_id ON payments(user_id);
+CREATE INDEX idx_payments_user_phone ON payments(user_phone);
+CREATE INDEX idx_payments_status ON payments(status);
+CREATE INDEX idx_payments_payment_type ON payments(payment_type);
+CREATE INDEX idx_payments_created_at ON payments(created_at);
+
 CREATE INDEX idx_missions_user_id ON missions(user_id);
 CREATE INDEX idx_missions_needed_actor ON missions(needed_actor);
 CREATE INDEX idx_missions_status ON missions(status);
@@ -208,6 +275,11 @@ CREATE INDEX idx_documents_title ON documents USING gin (to_tsvector('french', t
 CREATE INDEX idx_documents_tags ON documents USING gin (tags);
 
 -- Add triggers for updated_at
+CREATE TRIGGER update_payments_updated_at
+  BEFORE UPDATE ON payments
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_missions_updated_at
   BEFORE UPDATE ON missions
   FOR EACH ROW

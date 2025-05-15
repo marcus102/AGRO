@@ -1,4 +1,3 @@
-
 export type Json =
   | string
   | number
@@ -7,8 +6,6 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-
-
 export interface Database {
   public: {
     Tables: {
@@ -16,6 +13,16 @@ export interface Database {
         Row: {
           id: string;
           role: 'worker' | 'technician' | 'entrepreneur' | 'admin';
+          super_role:
+            | 'user'
+            | 'admin'
+            | 'organization'
+            | 'government'
+            | 'moderator'
+            | 'technology'
+            | 'law'
+            | 'finance';
+          nationality: 'national' | 'international' | 'foreign';
           full_name: string;
           phone: string | null;
           profile_picture: string | null;
@@ -28,8 +35,15 @@ export interface Database {
           skills: string[] | null;
           work_experience: string[] | null;
           availability_locations: string[] | null;
+          specialization: string[] | null;
+          availability_status: 'available' | 'not_available';
           verification_status: 'not_verified' | 'verified';
           docs_status: 'not_uploaded' | 'pending' | 'accepted' | 'rejected';
+          status: 'active' | 'inactive' | 'suspended';
+          active: boolean;
+          account_status: 'healthy' | 'warning' | 'suspended' | 'deleted';
+          account_verified: boolean;
+          metadata: Json;
           created_at: string;
           updated_at: string;
         };
@@ -64,9 +78,14 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          identification_type: 'id_card' | 'passport'| 'driving_license';
+          identification_type: 'id_card' | 'passport' | 'driving_license';
           id_file_path: string;
-          legal_document_type:'business' | 'certification' | 'work_permit' | 'insurance' | 'experience';
+          legal_document_type:
+            | 'business'
+            | 'certification'
+            | 'work_permit'
+            | 'insurance'
+            | 'experience';
           legal_file_path: string;
           status: 'pending' | 'approved' | 'rejected';
           metadata: Json;

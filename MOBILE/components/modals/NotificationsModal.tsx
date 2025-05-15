@@ -1,50 +1,105 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { BaseModal } from './BaseModal';
 import { Star, Award, MessageSquare, Bell, Check } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useNotificationStore } from '@/stores/notification';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface NotificationsModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
-const notifications = [
-  {
-    id: '1',
-    type: 'application',
-    title: 'Nouvelle candidature',
-    message: 'Marie L. a postulé pour la mission de récolte',
-    time: 'Il y a 5 min',
-    unread: true,
-  },
-  {
-    id: '2',
-    type: 'mission',
-    title: 'Mission terminée',
-    message: 'La mission "Maintenance des Serres" est terminée',
-    time: 'Il y a 2h',
-    unread: true,
-  },
-  {
-    id: '3',
-    type: 'message',
-    title: 'Nouveau message',
-    message: 'Ferme Bio Durand vous a envoyé un message',
-    time: 'Il y a 3h',
-    unread: false,
-  },
-  {
-    id: '4',
-    type: 'achievement',
-    title: 'Nouvelle récompense',
-    message: 'Vous avez obtenu le badge "Expert Agricole"',
-    time: 'Hier',
-    unread: false,
-  },
-];
+// Map notification types to preference keys
+const notificationTypeMap: Record<string, keyof NotificationPreferences> = {
+  message: 'message',
+  application: 'news',       // Assuming 'application' maps to 'news'
+  mission: 'update',         // Assuming 'mission' maps to 'update'
+  achievement: 'ads',        // Assuming 'achievement' maps to 'ads'
+};
 
-export function NotificationsModal({ visible, onClose }: NotificationsModalProps) {
+interface NotificationPreferences {
+  message: boolean;
+  news: boolean;
+  update: boolean;
+  ads: boolean;
+  sounds: boolean;
+  vibrations: boolean;
+  push: boolean;
+}
+
+export function NotificationsModal({
+  visible,
+  onClose,
+}: NotificationsModalProps) {
+  const {
+    notifications,
+    fetchNotifications,
+    loading,
+    error,
+    markAllAsRead,
+    markAsRead,
+    getUnreadCount,
+  } = useNotificationStore();
+  
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({
+    message: true,
+    news: true,
+    update: true,
+    ads: false,
+    sounds: true,
+    vibrations: true,
+    push: true,
+  });
+
+  // Load notification preferences
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const savedPrefs = await AsyncStorage.getItem('notificationPreferences');
+        if (savedPrefs) {
+          setNotificationPreferences(JSON.parse(savedPrefs));
+        }
+      } catch (error) {
+        console.error('Failed to load notification preferences', error);
+      }
+    };
+    
+    loadPreferences();
+  }, []);
+
+  useEffect(() => {
+    if (visible) {
+      fetchNotifications();
+    }
+  }, [visible]);
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllAsRead();
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await markAsRead(id);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'application':
@@ -60,62 +115,105 @@ export function NotificationsModal({ visible, onClose }: NotificationsModalProps
     }
   };
 
+  const formatTime = (dateString: string) => {
+    return formatDistanceToNow(new Date(dateString), {
+      addSuffix: true,
+      locale: fr,
+    }).replace('il y a ', 'Il y a ');
+  };
+
+  // Filter notifications based on user preferences
+  const filteredNotifications = notifications.filter(notification => {
+    const preferenceKey = notificationTypeMap[notification.type];
+    return preferenceKey ? notificationPreferences[preferenceKey] : true;
+  });
+
   return (
     <BaseModal visible={visible} onClose={onClose}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Notifications</Text>
-          <TouchableOpacity style={styles.markAllButton}>
+          <TouchableOpacity
+            style={styles.markAllButton}
+            onPress={handleMarkAllAsRead}
+            disabled={getUnreadCount() === 0}
+          >
             <Check size={20} color="#166534" />
             <Text style={styles.markAllText}>Tout marquer comme lu</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content}>
-          {notifications.map((notification, index) => {
-            const Icon = getIcon(notification.type);
-            return (
-              <Animated.View
-                key={notification.id}
-                entering={FadeInDown.delay(index * 100)}
-              >
-                <TouchableOpacity 
-                  style={[
-                    styles.notificationItem,
-                    notification.unread && styles.unreadItem
-                  ]}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#166534" />
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : (
+          <ScrollView style={styles.content}>
+            {filteredNotifications.map((notification, index) => {
+              const Icon = getIcon(notification.type);
+              return (
+                <Animated.View
+                  key={notification.id}
+                  entering={FadeInDown.delay(index * 100)}
                 >
-                  <View style={[
-                    styles.iconContainer,
-                    { backgroundColor: notification.unread ? '#f0fdf4' : '#f3f4f6' }
-                  ]}>
-                    <Icon 
-                      size={24} 
-                      color={notification.unread ? '#166534' : '#6b7280'} 
-                    />
-                  </View>
-                  
-                  <View style={styles.notificationContent}>
-                    <Text style={[
-                      styles.notificationTitle,
-                      notification.unread && styles.unreadText
-                    ]}>
-                      {notification.title}
-                    </Text>
-                    <Text style={styles.notificationMessage}>
-                      {notification.message}
-                    </Text>
-                    <Text style={styles.notificationTime}>
-                      {notification.time}
-                    </Text>
-                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.notificationItem,
+                      !notification.read && styles.unreadItem,
+                    ]}
+                    onPress={() => handleMarkAsRead(notification.id)}
+                  >
+                    <View
+                      style={[
+                        styles.iconContainer,
+                        {
+                          backgroundColor: !notification.read
+                            ? '#f0fdf4'
+                            : '#f3f4f6',
+                        },
+                      ]}
+                    >
+                      <Icon
+                        size={24}
+                        color={!notification.read ? '#166534' : '#6b7280'}
+                      />
+                    </View>
 
-                  {notification.unread && <View style={styles.unreadDot} />}
-                </TouchableOpacity>
-              </Animated.View>
-            );
-          })}
-        </ScrollView>
+                    <View style={styles.notificationContent}>
+                      <Text
+                        style={[
+                          styles.notificationTitle,
+                          !notification.read && styles.unreadText,
+                        ]}
+                      >
+                        {notification.title}
+                      </Text>
+                      <Text style={styles.notificationMessage}>
+                        {notification.context}
+                      </Text>
+                      <Text style={styles.notificationTime}>
+                        {formatTime(notification.created_at)}
+                      </Text>
+                    </View>
+
+                    {!notification.read && (
+                      <View style={styles.unreadDot} />
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            })}
+            {filteredNotifications.length === 0 && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Aucune notification</Text>
+              </View>
+            )}
+          </ScrollView>
+        )}
       </View>
     </BaseModal>
   );
@@ -126,9 +224,9 @@ const styles = StyleSheet.create({
     height: '90%',
   },
   header: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -155,6 +253,23 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: '#dc2626',
+    textAlign: 'center',
+  },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -180,7 +295,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 16,
     color: '#374151',
-    marginBottom:  4,
+    marginBottom: 4,
   },
   unreadText: {
     color: '#111827',

@@ -13,7 +13,6 @@ import {
   MapPin,
   Edit,
   User,
-  Phone,
   Briefcase,
   GraduationCap,
   Globe,
@@ -27,9 +26,11 @@ export default function ProfileScreen() {
   interface Profile {
     full_name?: string;
     role?: string;
+    super_role?: string;
     phone?: string;
     profile_picture?: string;
     bio?: string;
+    specialization?: string;
     certifications?: string;
     education?: string;
     experience?: string;
@@ -48,13 +49,27 @@ export default function ProfileScreen() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const { data: profiles, error } = await supabase
+        setLoading(true);
+
+        // Get the current authenticated user
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) throw userError;
+
+        // Fetch the profile for the authenticated user
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
+          .eq('id', user?.id || '')
           .single();
 
-        if (error) throw error;
-        setProfile(profiles);
+        if (profileError) throw profileError;
+        // console.log('Profile:', profile);
+
+        setProfile(profileData);
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -66,17 +81,19 @@ export default function ProfileScreen() {
   }, []);
 
   const getDashboardRoute = () => {
-    switch (profile?.role) {
-      case 'admin':
-        return '/profile/dashboard/admin';
-      case 'entrepreneur':
-        return '/profile/dashboard/entrepreneur';
-      case 'technician':
-        return '/profile/dashboard/technician';
-      case 'worker':
-        return '/profile/dashboard/worker';
-      default:
-        return null;
+    if (profile?.super_role === 'admin') {
+      return '/profile/dashboard/admin';
+    } else {
+      switch (profile?.role) {
+        case 'entrepreneur':
+          return '/profile/dashboard/entrepreneur';
+        case 'technician':
+          return '/profile/dashboard/technician';
+        case 'worker':
+          return '/profile/dashboard/worker';
+        default:
+          return null;
+      }
     }
   };
 
@@ -243,11 +260,11 @@ export default function ProfileScreen() {
             icon={<Briefcase size={20} color={colors.primary} />}
             details={[
               { label: 'Compétences', value: profile?.skills },
-              { label: 'Expérience', value: profile?.experience },
               {
                 label: 'Expérience Professionnelle',
                 value: profile?.work_experience,
               },
+              { label: 'Spécialisation', value: profile?.specialization },
             ]}
             colors={colors}
             renderDetailValue={renderDetailValue}
@@ -257,7 +274,6 @@ export default function ProfileScreen() {
             title="Éducation et Certifications"
             icon={<GraduationCap size={20} color={colors.primary} />}
             details={[
-              { label: 'Éducation', value: profile?.education },
               { label: 'Certifications', value: profile?.certifications },
             ]}
             colors={colors}

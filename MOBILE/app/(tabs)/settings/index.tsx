@@ -7,19 +7,20 @@ import {
   TouchableOpacity,
   Platform,
   Switch,
+  Share,
+  Linking,
 } from 'react-native';
 import { router } from 'expo-router';
 import {
-  User,
   Bell,
   Moon,
   Globe,
-  Lock,
   KeyRound,
   Shield,
   Info,
   ChevronRight,
   LogOut,
+  Share as ShareIcon,
 } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
@@ -27,6 +28,8 @@ import { useLanguageStore } from '@/stores/language';
 import { LANGUAGES } from '@/types/language';
 import { LanguageModal } from '@/components/modals/LanguageModal';
 import { PasswordModal } from '@/components/modals/PasswordModal';
+import { EmailUpdateModal } from '@/components/modals/EmailSettingsModal';
+import NotificationSettingsModal from '@/components/modals/NotificationSettingsModal';
 
 type MenuItemProps = {
   icon: React.ComponentType<{ size: number; color: string }>;
@@ -88,6 +91,8 @@ export default function SettingsScreen() {
   const { signOut } = useAuthStore();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   const selectedLanguage = LANGUAGES.find((lang) => lang.code === language);
 
@@ -98,6 +103,27 @@ export default function SettingsScreen() {
 
   const handleThemeToggle = () => {
     toggleTheme();
+  };
+
+  const handleShareApp = async () => {
+    try {
+      const result = await Share.share({
+        message:
+          'Découvrez AGRO, la plateforme qui connecte les talents agricoles : https://agro-app.com',
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          console.log('Shared with activity type:', result.activityType);
+        } else {
+          console.log('Shared successfully');
+        }
+      } else if (result.action === Share.dismissedAction) {
+        console.log('Share dismissed');
+      }
+    } catch (error) {
+      console.error('Error sharing the app:', error);
+    }
   };
 
   return (
@@ -111,7 +137,7 @@ export default function SettingsScreen() {
         <MenuItem
           icon={Globe}
           title="Langue"
-          subtitle={`${selectedLanguage?.flag} ${selectedLanguage?.nativeName}`}
+          subtitle={` ${selectedLanguage?.nativeName}`}
           onPress={() => setShowLanguageModal(true)}
         />
         <MenuItem
@@ -120,11 +146,6 @@ export default function SettingsScreen() {
           showToggle
           isToggled={theme === 'dark'}
           onPress={handleThemeToggle}
-        />
-        <MenuItem
-          icon={Lock}
-          title="Confidentialité du compte"
-          onPress={() => {}}
         />
       </View>
 
@@ -135,7 +156,7 @@ export default function SettingsScreen() {
         <MenuItem
           icon={Bell}
           title="Paramètres des notifications"
-          onPress={() => router.push('/settings/notifications')}
+          onPress={() => setShowNotificationsModal(true)} // Show NotificationSettingsModal
         />
       </View>
 
@@ -150,26 +171,46 @@ export default function SettingsScreen() {
         />
         <MenuItem
           icon={Shield}
-          title="Authentification à deux facteurs"
-          onPress={() => {}}
+          title="Modifier l'email"
+          onPress={() => setShowEmailModal(true)}
         />
       </View>
 
+      <View style={[styles.section, { borderColor: colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: colors.muted }]}>
+          Partager l'application
+        </Text>
+        <MenuItem
+          icon={ShareIcon}
+          title="Partager AGRO"
+          onPress={handleShareApp}
+        />
+      </View>
+
+      {/* À propos Section */}
       <View style={[styles.section, { borderColor: colors.border }]}>
         <Text style={[styles.sectionTitle, { color: colors.muted }]}>
           À propos
         </Text>
         <MenuItem
           icon={Info}
-          title="Version"
-          subtitle="1.0.0"
-          showChevron={false}
-          onPress={() => {}}
+          title="Mentions légales"
+          onPress={() =>
+            Linking.openURL('http://localhost:5173/terms-of-service')
+          }
         />
-        <MenuItem icon={Info} title="Mentions légales" onPress={() => {}} />
         <MenuItem
           icon={Shield}
           title="Politique de confidentialité"
+          onPress={() =>
+            Linking.openURL('http://localhost:5173/privacy-policy')
+          }
+        />
+        <MenuItem
+          icon={Info}
+          title="Version"
+          subtitle="1.0.0"
+          showChevron={false}
           onPress={() => {}}
         />
       </View>
@@ -184,6 +225,7 @@ export default function SettingsScreen() {
         </Text>
       </TouchableOpacity>
 
+      {/* Modals */}
       <LanguageModal
         visible={showLanguageModal}
         onClose={() => setShowLanguageModal(false)}
@@ -192,6 +234,16 @@ export default function SettingsScreen() {
       <PasswordModal
         visible={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
+      />
+
+      <NotificationSettingsModal
+        visible={showNotificationsModal} // Pass visibility state
+        onClose={() => setShowNotificationsModal(false)} // Close modal
+      />
+
+      <EmailUpdateModal
+        visible={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
       />
     </ScrollView>
   );

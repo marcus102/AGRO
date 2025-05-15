@@ -1,5 +1,6 @@
 -- Create custom types
 CREATE TYPE user_role AS ENUM ('worker', 'technician', 'entrepreneur');
+CREATE TYPE user_super_role AS ENUM ('user','admin', 'organization', 'government', 'moderator', 'technology', 'law', 'finance');
 CREATE TYPE verification_status AS ENUM ('not_verified', 'verified');
 CREATE TYPE docs_status AS ENUM ('accepted', 'rejected', 'pending', 'not_uploaded');
 CREATE TYPE id_type AS ENUM ('id_card', 'passport', 'driver_license', 'residence_permit');
@@ -7,11 +8,15 @@ CREATE TYPE legal_doc_type AS ENUM ('business', 'certification', 'work_permit', 
 CREATE TYPE document_status AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE availability_status AS ENUM ('available', 'not_available');
 CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended');
+CREATE TYPE user_nationality AS ENUM ('national', 'international', 'foreign');
+CREATE TYPE user_account_status AS ENUM ('healthy', 'warning', 'suspended', 'deleted');
 
 -- Create profiles table
 CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  super_role user_super_role NOT NULL DEFAULT 'user',
   role user_role NOT NULL,
+  nationality user_nationality NOT NULL DEFAULT 'national',
   full_name text NOT NULL,
   phone text,
   actual_location text,
@@ -21,12 +26,17 @@ CREATE TABLE IF NOT EXISTS profiles (
   status user_status NOT NULL DEFAULT 'active',
   skills text[],
   languages text[],
+  specialization text[],
   certifications text[],
   work_experience text[],
   portfolio text[],
   profile_picture text,
   verification_status verification_status NOT NULL DEFAULT 'not_verified',
   docs_status docs_status NOT NULL DEFAULT 'not_uploaded',
+  active boolean NOT NULL DEFAULT true,
+  account_status user_account_status NOT NULL DEFAULT 'healthy',
+  account_verified boolean NOT NULL DEFAULT false,
+  metadata jsonb DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -84,6 +94,18 @@ CREATE POLICY "Users can update own profile"
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
+CREATE POLICY "Users can delete own profile"
+  ON profiles
+  FOR DELETE
+  TO authenticated
+  USING (auth.uid() = id);
+
+CREATE POLICY "Users can create own profile"
+  ON profiles
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = id);
+
 -- Documents policies
 CREATE POLICY "Users can read own documents"
   ON user_documents
@@ -104,10 +126,28 @@ CREATE POLICY "Users can update own documents"
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
+CREATE POLICY "Users can delete own documents"
+  ON user_documents
+  FOR DELETE
+  TO authenticated
+  USING (user_id = auth.uid());
+
 -- Verification codes policies
 CREATE POLICY "Users can read own verification codes"
   ON verification_codes
   FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Users can create own verification codes"
+  ON verification_codes
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can delete own verification codes"
+  ON verification_codes
+  FOR DELETE
   TO authenticated
   USING (user_id = auth.uid());
 

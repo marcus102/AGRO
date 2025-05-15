@@ -29,7 +29,12 @@ import * as FileSystem from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 
 type IdType = 'id_card' | 'passport' | 'driver_license' | 'residence_permit';
-type LegalDocType = 'business' | 'certification' | 'work_permit' | 'insurance' | 'experience';
+type LegalDocType =
+  | 'business'
+  | 'certification'
+  | 'work_permit'
+  | 'insurance'
+  | 'experience';
 
 interface Document {
   id: string;
@@ -49,25 +54,61 @@ interface DocumentTypeOption {
 }
 
 const ID_TYPES: DocumentTypeOption[] = [
-  { id: 'id_card', title: "Carte d'identité", description: "Carte nationale d'identité en cours de validité" },
-  { id: 'passport', title: 'Passeport', description: 'Passeport en cours de validité' },
-  { id: 'driver_license', title: 'Permis de conduire', description: 'Permis de conduire en cours de validité' },
-  { id: 'residence_permit', title: 'Titre de séjour', description: 'Titre de séjour en cours de validité' },
+  {
+    id: 'id_card',
+    title: "Carte d'identité",
+    description: "Carte nationale d'identité en cours de validité",
+  },
+  {
+    id: 'passport',
+    title: 'Passeport',
+    description: 'Passeport en cours de validité',
+  },
+  {
+    id: 'driver_license',
+    title: 'Permis de conduire',
+    description: 'Permis de conduire en cours de validité',
+  },
+  {
+    id: 'residence_permit',
+    title: 'Titre de séjour',
+    description: 'Titre de séjour en cours de validité',
+  },
 ];
 
 const LEGAL_TYPES: DocumentTypeOption[] = [
-  { id: 'business', title: "Licence d'entreprise", description: 'Document KBIS ou équivalent' },
-  { id: 'certification', title: 'Certification', description: 'Diplôme ou certification professionnelle' },
-  { id: 'work_permit', title: 'Permis de travail', description: 'Autorisation de travail' },
-  { id: 'insurance', title: 'Assurance', description: "Attestation d'assurance professionnelle" },
-  { id: 'experience', title: "Attestation d'expérience", description: 'Lettre de recommandation ou contrat' },
+  {
+    id: 'business',
+    title: "Licence d'entreprise",
+    description: 'Document KBIS ou équivalent',
+  },
+  {
+    id: 'certification',
+    title: 'Certification',
+    description: 'Diplôme ou certification professionnelle',
+  },
+  {
+    id: 'work_permit',
+    title: 'Permis de travail',
+    description: 'Autorisation de travail',
+  },
+  {
+    id: 'insurance',
+    title: 'Assurance',
+    description: "Attestation d'assurance professionnelle",
+  },
+  {
+    id: 'experience',
+    title: "Attestation d'expérience",
+    description: 'Lettre de recommandation ou contrat',
+  },
 ];
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const SUPPORTED_FORMATS = ['image/jpeg', 'image/png', 'application/pdf'];
 
 const getRequirements = (role: string) => {
-  const baseRequirements = [
+  return [
     {
       id: 'identity',
       title: "Pièce d'identité",
@@ -76,75 +117,26 @@ const getRequirements = (role: string) => {
       maxSize: 5,
       formats: ['jpg', 'png', 'pdf'],
     },
+    {
+      id: 'legal',
+      title: 'Document légal',
+      description: 'Document légal tel qu’une licence ou un permis',
+      required: true,
+      maxSize: 5,
+      formats: ['jpg', 'png', 'pdf'],
+    },
   ];
-
-  switch (role) {
-    case 'entrepreneur':
-      return [
-        ...baseRequirements,
-        {
-          id: 'business',
-          title: "Licence d'entreprise",
-          description: 'Document KBIS ou équivalent',
-          required: true,
-          maxSize: 5,
-          formats: ['jpg', 'png', 'pdf'],
-        },
-        {
-          id: 'insurance',
-          title: 'Assurance professionnelle',
-          description: "Attestation d'assurance en cours de validité",
-          required: true,
-          maxSize: 5,
-          formats: ['jpg', 'png', 'pdf'],
-        },
-      ];
-    case 'technician':
-      return [
-        ...baseRequirements,
-        {
-          id: 'certification',
-          title: 'Certification professionnelle',
-          description: 'Diplôme ou certification technique',
-          required: true,
-          maxSize: 10,
-          formats: ['jpg', 'png', 'pdf'],
-        },
-        {
-          id: 'experience',
-          title: "Attestation d'expérience",
-          description: 'Lettre de recommandation ou contrat précédent',
-          required: false,
-          maxSize: 5,
-          formats: ['jpg', 'png', 'pdf'],
-        },
-      ];
-    case 'worker':
-      return [
-        ...baseRequirements,
-        {
-          id: 'workPermit',
-          title: 'Permis de travail',
-          description: 'Autorisation de travail valide',
-          required: true,
-          maxSize: 5,
-          formats: ['jpg', 'png', 'pdf'],
-        },
-      ];
-    default:
-      return baseRequirements;
-  }
 };
 
-function DocumentTypeModal({ 
-  visible, 
-  onClose, 
-  onSelect, 
+function DocumentTypeModal({
+  visible,
+  onClose,
+  onSelect,
   options,
   title,
-}: { 
-  visible: boolean; 
-  onClose: () => void; 
+}: {
+  visible: boolean;
+  onClose: () => void;
   onSelect: (type: DocumentTypeOption) => void;
   options: DocumentTypeOption[];
   title: string;
@@ -158,15 +150,22 @@ function DocumentTypeModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+      <View
+        style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}
+      >
         <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-          <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
-          
+          <Text style={[styles.modalTitle, { color: colors.text }]}>
+            {title}
+          </Text>
+
           <ScrollView style={styles.modalScroll}>
             {options.map((option) => (
               <TouchableOpacity
                 key={option.id}
-                style={[styles.typeOption, { backgroundColor: colors.background }]}
+                style={[
+                  styles.typeOption,
+                  { backgroundColor: colors.background },
+                ]}
                 onPress={() => {
                   onSelect(option);
                   onClose();
@@ -176,7 +175,9 @@ function DocumentTypeModal({
                   <Text style={[styles.typeTitle, { color: colors.text }]}>
                     {option.title}
                   </Text>
-                  <Text style={[styles.typeDescription, { color: colors.muted }]}>
+                  <Text
+                    style={[styles.typeDescription, { color: colors.muted }]}
+                  >
                     {option.description}
                   </Text>
                 </View>
@@ -206,11 +207,17 @@ export default function UploadDocumentsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [typeModalVisible, setTypeModalVisible] = useState(false);
-  const [selectedRequirement, setSelectedRequirement] = useState<(typeof requirements)[0] | null>(null);
+  const [selectedRequirement, setSelectedRequirement] = useState<
+    (typeof requirements)[0] | null
+  >(null);
 
   const requirements = getRequirements(profile?.role || 'worker');
 
-  const validateFile = (fileUri: string, fileType: string, fileSize: number) => {
+  const validateFile = (
+    fileUri: string,
+    fileType: string,
+    fileSize: number
+  ) => {
     if (!SUPPORTED_FORMATS.includes(fileType)) {
       throw new Error('Unsupported file format. Please use JPG, PNG, or PDF.');
     }
@@ -222,15 +229,21 @@ export default function UploadDocumentsScreen() {
     return true;
   };
 
-  const uploadToStorage = async (fileUri: string, path: string, contentType: string) => {
-    const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
+  const uploadToStorage = async (
+    fileUri: string,
+    path: string,
+    contentType: string
+  ) => {
+    const base64 = await FileSystem.readAsStringAsync(fileUri, {
+      encoding: 'base64',
+    });
     const arrayBuffer = decode(base64);
-    
+
     const { data, error } = await supabase.storage
       .from('documents')
-      .upload(path, arrayBuffer, { 
+      .upload(path, arrayBuffer, {
         contentType,
-        upsert: false
+        upsert: false,
       });
 
     if (error) throw error;
@@ -323,36 +336,41 @@ export default function UploadDocumentsScreen() {
         throw new Error('Please upload all required documents');
       }
 
-      // Upload files and create database records
-      const uploadPromises = documents.map(async (doc) => {
+      // Prepare the document data object
+      const documentData: Record<string, any> = {
+        user_id: user.id,
+        identification_type: null,
+        id_file_path: null,
+        legal_document_type: null,
+        legal_file_path: null,
+        status: 'pending',
+        metadata: {
+          size: documents.reduce((total, doc) => total + doc.fileSize, 0),
+          type: documents.map((doc) => doc.fileType).join(', '),
+          uploaded_at: new Date().toISOString(),
+        },
+      };
+
+      for (const doc of documents) {
         const fileExt = doc.fileType.split('/')[1];
         const timestamp = Date.now();
         const isIdDocument = doc.id === 'identity';
-        
-        const path = `${user.id}/${isIdDocument ? 'id' : 'legal'}/${timestamp}.${fileExt}`;
+
+        const path = `${user.id}/${
+          isIdDocument ? 'id' : 'legal'
+        }/${timestamp}.${fileExt}`;
         const storagePath = await uploadToStorage(doc.file, path, doc.fileType);
 
-        return {
-          user_id: user.id,
-          identification_type: isIdDocument ? doc.documentType as IdType : null,
-          id_file_path: isIdDocument ? storagePath : null,
-          legal_document_type: !isIdDocument ? doc.documentType as LegalDocType : null,
-          legal_file_path: !isIdDocument ? storagePath : null,
-          status: 'pending',
-          metadata: {
-            size: doc.fileSize,
-            type: doc.fileType,
-            uploaded_at: new Date().toISOString(),
-          },
-        };
-      });
+        documentData.identification_type = doc.documentType;
+        documentData.id_file_path = storagePath;
+        documentData.legal_document_type = doc.documentType;
+        documentData.legal_file_path = storagePath;
+      }
 
-      const uploadedDocs = await Promise.all(uploadPromises);
-
-      // Insert documents into database
+      // Insert the document data into the database
       const { data, error: docsError } = await supabase
         .from('user_documents')
-        .insert(uploadedDocs)
+        .insert([documentData])
         .select();
 
       if (docsError) throw docsError;
@@ -459,9 +477,23 @@ export default function UploadDocumentsScreen() {
                 </Text>
 
                 {doc?.documentType && (
-                  <View style={[styles.selectedType, { backgroundColor: colors.primary + '20' }]}>
-                    <Text style={[styles.selectedTypeText, { color: colors.primary }]}>
-                      {(req.id === 'identity' ? ID_TYPES : LEGAL_TYPES).find(t => t.id === doc.documentType)?.title}
+                  <View
+                    style={[
+                      styles.selectedType,
+                      { backgroundColor: colors.primary + '20' },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.selectedTypeText,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      {
+                        (req.id === 'identity' ? ID_TYPES : LEGAL_TYPES).find(
+                          (t) => t.id === doc.documentType
+                        )?.title
+                      }
                     </Text>
                   </View>
                 )}
@@ -569,7 +601,9 @@ export default function UploadDocumentsScreen() {
         visible={typeModalVisible}
         onClose={() => setTypeModalVisible(false)}
         onSelect={handleDocumentTypeSelect}
-        options={selectedRequirement?.id === 'identity' ? ID_TYPES : LEGAL_TYPES}
+        options={
+          selectedRequirement?.id === 'identity' ? ID_TYPES : LEGAL_TYPES
+        }
         title={`Select ${selectedRequirement?.title} Type`}
       />
     </View>

@@ -19,7 +19,7 @@ export default function SettingsLayout() {
           headerShown: false,
         }}
       />
-      <Stack.Screen
+      {/* <Stack.Screen
         name="notifications"
         options={{
           title: 'Notifications',
@@ -33,7 +33,7 @@ export default function SettingsLayout() {
             color: colors.text,
           },
         }}
-      />
+      /> */}
     </Stack>
   );
 }

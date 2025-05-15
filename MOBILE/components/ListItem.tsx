@@ -6,6 +6,7 @@ import {
   Star,
   ChevronRight,
   Clock,
+  CreditCard,
 } from 'lucide-react-native';
 import {
   View,
@@ -16,9 +17,11 @@ import {
   Platform,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { router } from 'expo-router';
 
 interface ListItemProps {
   item: {
+    id: string;
     mission_images: string[];
     mission_title: string;
     needed_actor: string;
@@ -56,6 +59,10 @@ export const ListItem: React.FC<ListItemProps> = ({
     return `${day}/${month}/${parseInt(year) === 2 ? '20' + year : year}`;
   };
 
+  const handlePaymentPress = () => {
+    router.push(`/payment/${item.id}`);
+  };
+
   return (
     <Animated.View
       entering={FadeInDown.delay(index * 100)}
@@ -87,6 +94,8 @@ export const ListItem: React.FC<ListItemProps> = ({
                   switch (item.status) {
                     case 'in_review':
                       return 'En attente';
+                    case 'accepted':
+                      return 'Accepté';
                     case 'online':
                       return 'En ligne';
                     case 'completed':
@@ -154,14 +163,32 @@ export const ListItem: React.FC<ListItemProps> = ({
           </View>
         </View>
 
+        {item.status === 'accepted' && (
+          <TouchableOpacity
+            style={[styles.payButton, { backgroundColor: colors.primary }]}
+            onPress={handlePaymentPress}
+          >
+            <CreditCard size={16} color={colors.card} />
+            <Text style={[styles.payButtonText, { color: colors.card }]}>
+              Payer maintenant
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.primary }]}
+          style={[styles.button, { 
+            backgroundColor: item.status === 'accepted' ? colors.card : colors.primary,
+            borderWidth: item.status === 'accepted' ? 1 : 0,
+            borderColor: item.status === 'accepted' ? colors.primary : 'transparent'
+          }]}
           onPress={onPress}
         >
-          <Text style={[styles.buttonText, { color: colors.card }]}>
+          <Text style={[styles.buttonText, { 
+            color: item.status === 'accepted' ? colors.primary : colors.card 
+          }]}>
             Voir les détails
           </Text>
-          <ChevronRight size={20} color={colors.card} />
+          <ChevronRight size={20} color={item.status === 'accepted' ? colors.primary : colors.card} />
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -246,6 +273,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 14,
     flex: 1,
+  },
+  payButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 12,
+  },
+  payButtonText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
   },
   button: {
     flexDirection: 'row',

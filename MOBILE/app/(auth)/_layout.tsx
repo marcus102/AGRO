@@ -21,7 +21,6 @@ export default function AuthLayout() {
       <Stack.Screen name="upload-documents" options={{ title: 'Upload Documents' }} />
       <Stack.Screen name="confirmation" options={{ title: 'Confirmation' }} />
       <Stack.Screen name="forgot-password" options={{ title: 'Forgot Password' }} />
-      <Stack.Screen name="reset-password" options={{ title: 'Reset Password' }} />
     </Stack>
   );
 }

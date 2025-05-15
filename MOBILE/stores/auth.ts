@@ -9,6 +9,7 @@ interface AuthState {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  profiles: Profile[];
   loading: boolean;
   error: string | null;
 
@@ -38,12 +39,15 @@ interface AuthState {
 
   resetPassword: (newPassword: string) => Promise<void>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
+  updateEmail: (email: string, password: string) => Promise<void>;
+  fetchProfiles: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   user: null,
   profile: null,
+  profiles: [],
   loading: false,
   error: null,
 
@@ -244,7 +248,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (profileError) throw profileError;
 
       // Delete the used verification code
-      await supabase.from('verification_codes').delete().eq('code', code);
+      const { error: deleteError } = await supabase
+        .from('verification_codes')
+        .delete()
+        .eq('code', code);
+
+      if (deleteError) throw deleteError;
 
       set({ profile });
     } catch (error) {
@@ -452,7 +461,69 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       set({
         error:
-          error instanceof Error ? error.message : 'Failed to send password reset email',
+          error instanceof Error
+            ? error.message
+            : 'Failed to send password reset email',
+      });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  fetchProfiles: async () => {
+    set({ loading: true, error: null });
+    try {
+      const { data, error } = await supabase.from('profiles').select('*');
+      if (error) throw error;
+      set({ profiles: data });
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error ? error.message : 'Failed to fetch profiles',
+      });
+    } finally {
+      set({ loading: false });
+    }
+  },
+  updateEmail: async (newEmail: string, password: string): Promise<void> => {
+    set({ loading: true, error: null });
+    try {
+      const { session } = get();
+
+      if (!session?.user?.email) {
+        throw new Error('Session utilisateur introuvable');
+      }
+
+      // First verify password by signing in
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: session.user.email,
+        password: password,
+      });
+
+      if (authError) {
+        throw new Error('Mot de passe incorrect');
+      }
+
+      // If password is correct, update email
+      const { error: updateError } = await supabase.auth.updateUser({
+        email: newEmail,
+      });
+
+      if (updateError) throw updateError;
+
+      // Send email confirmation
+      const { error: confirmError } = await supabase.auth.resend({
+        type: 'email_change',
+        email: newEmail,
+      });
+
+      if (confirmError) throw confirmError;
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Échec de la mise à jour de l'email",
       });
     } finally {
       set({ loading: false });

@@ -30,6 +30,8 @@ export type Roles = 'worker' | 'technician' | 'entrepreneur' | 'admin';
 export interface Mission {
   id: string;
   user_id: string;
+  payment_id: string;
+  actor_specialization: string;
   needed_actor: UserRole;
   needed_actor_amount: number;
   mission_images: string[];
@@ -38,6 +40,8 @@ export interface Mission {
   location: string,
   start_date: string;
   end_date: string;
+  surface_area: number;
+  surface_unit: string;
   required_experience_level: ExperienceLevel;
   equipment: boolean;
   proposed_advantages: AdvantageType;

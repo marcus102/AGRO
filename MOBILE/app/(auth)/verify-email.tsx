@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
   Platform,
-  Keyboard 
+  Keyboard,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Mail, AlertCircle, ArrowLeft } from 'lucide-react-native';
@@ -14,20 +14,17 @@ import { useThemeStore } from '@/stores/theme';
 import { useAuthStore } from '@/stores/auth';
 import { isValidVerificationCode } from '@/lib/supabase';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useLocalSearchParams } from 'expo-router'; // Import this to get query parameters
 
 const CODE_LENGTH = 6;
 
 export default function VerifyEmailScreen() {
   const { colors } = useThemeStore();
-  const { verifyEmail, resendVerificationCode, loading, error } = useAuthStore();
+  const { verifyEmail, resendVerificationCode, loading, error } =
+    useAuthStore();
   const [code, setCode] = useState('');
   const [timer, setTimer] = useState(30);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef<TextInput[]>([]);
-
-  // Get the mode (sign-up or reset-password) from the query parameters
-  const { mode } = useLocalSearchParams();
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -81,10 +78,7 @@ export default function VerifyEmailScreen() {
     try {
       await verifyEmail(code);
 
-      // Navigate based on the mode
-      if (mode === 'sign-up') {
-        router.replace('/upload-documents');
-      }
+      router.replace('/upload-documents');
     } catch (err) {
       // Error is handled by the store
     }
@@ -92,17 +86,14 @@ export default function VerifyEmailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.backButton, { backgroundColor: colors.card }]}
-        onPress={() => router.back()}
+        onPress={() => router.push('/(auth)/register')}
       >
         <ArrowLeft size={24} color={colors.primary} />
       </TouchableOpacity>
 
-      <Animated.View 
-        entering={FadeInDown.delay(200)}
-        style={styles.content}
-      >
+      <Animated.View entering={FadeInDown.delay(200)} style={styles.content}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>
             Verify your email
@@ -113,11 +104,13 @@ export default function VerifyEmailScreen() {
         </View>
 
         <View style={styles.progress}>
-          <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
-            <Animated.View 
+          <View
+            style={[styles.progressBar, { backgroundColor: colors.border }]}
+          >
+            <Animated.View
               style={[
                 styles.progressFill,
-                { backgroundColor: colors.primary, width: '50%' }
+                { backgroundColor: colors.primary, width: '50%' },
               ]}
             />
           </View>
@@ -127,9 +120,16 @@ export default function VerifyEmailScreen() {
         </View>
 
         {error && (
-          <View style={[styles.errorContainer, { backgroundColor: colors.error + '20' }]}>
+          <View
+            style={[
+              styles.errorContainer,
+              { backgroundColor: colors.error + '20' },
+            ]}
+          >
             <AlertCircle size={20} color={colors.error} />
-            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+            <Text style={[styles.errorText, { color: colors.error }]}>
+              {error}
+            </Text>
           </View>
         )}
 
@@ -140,16 +140,18 @@ export default function VerifyEmailScreen() {
               ref={(ref) => ref && (inputRefs.current[index] = ref)}
               style={[
                 styles.codeInput,
-                { 
+                {
                   backgroundColor: colors.card,
                   borderColor: colors.border,
                   color: colors.text,
                 },
-                code[index] ? { borderColor: colors.primary } : undefined
+                code[index] ? { borderColor: colors.primary } : undefined,
               ]}
               value={code[index] || ''}
               onChangeText={(value) => handleCodeChange(index, value)}
-              onKeyPress={({ nativeEvent: { key } }) => handleKeyPress(index, key)}
+              onKeyPress={({ nativeEvent: { key } }) =>
+                handleKeyPress(index, key)
+              }
               keyboardType="number-pad"
               maxLength={1}
               selectTextOnFocus
@@ -161,7 +163,7 @@ export default function VerifyEmailScreen() {
           style={[
             styles.verifyButton,
             { backgroundColor: colors.primary },
-            (loading || code.length !== CODE_LENGTH) && styles.buttonDisabled
+            (loading || code.length !== CODE_LENGTH) && styles.buttonDisabled,
           ]}
           onPress={handleVerify}
           disabled={loading || code.length !== CODE_LENGTH}

@@ -7,42 +7,46 @@ import {
   TouchableOpacity,
   Platform,
   Image,
+  Modal,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Mail, ArrowLeft, AlertCircle } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
 import { useThemeStore } from '@/stores/theme';
 import { useAuthStore } from '@/stores/auth';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
-  // const [loading, setLoading] = useState(false);
-  // const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [showModal, setShowModal] = useState(false); // State for the popup
   const { colors } = useThemeStore();
-  const { user, sendVerificationCode, loading, error, sendPasswordResetEmail } = useAuthStore();
+  const { sendPasswordResetEmail, loading, error } = useAuthStore();
 
   const handleSendCode = async () => {
-
     try {
       await sendPasswordResetEmail(email);
-      // router.push('/verify-email?mode=reset-password');
+      setShowModal(true); // Show the popup
     } catch (err) {
-      // Error handeled by the store
-    } 
+      // Error handled by the store
+    }
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+    router.push('/login'); // Redirect to login page
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Image
-        source={{ uri: 'https://images.unsplash.com/photo-1467740100611-36858db27485?q=80&w=2073&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' }}
+        source={{
+          uri: 'https://images.unsplash.com/photo-1467740100611-36858db27485?q=80&w=2073&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+        }}
         style={styles.backgroundImage}
       />
-      
+
       <View style={styles.overlay} />
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.backButton, { backgroundColor: colors.card }]}
         onPress={() => router.back()}
       >
@@ -50,10 +54,7 @@ export default function ForgotPasswordScreen() {
       </TouchableOpacity>
 
       <View style={styles.content}>
-        <Animated.View 
-          entering={FadeInDown.delay(200)}
-          style={styles.header}
-        >
+        <Animated.View entering={FadeInDown.delay(200)} style={styles.header}>
           <Text style={[styles.title, { color: colors.card }]}>
             Forgot Password?
           </Text>
@@ -62,7 +63,7 @@ export default function ForgotPasswordScreen() {
           </Text>
         </Animated.View>
 
-        <Animated.View 
+        <Animated.View
           entering={FadeInDown.delay(400)}
           style={[styles.form, { backgroundColor: colors.card }]}
         >
@@ -73,50 +74,39 @@ export default function ForgotPasswordScreen() {
             </View>
           )}
 
-          {success ? (
-            <View style={[styles.successContainer, { backgroundColor: colors.success + '20' }]}>
-              <Text style={[styles.successTitle, { color: colors.success }]}>
-                Check your email
-              </Text>
-              <Text style={[styles.successText, { color: colors.muted }]}>
-                We've sent password reset instructions to {email}. Please check your inbox and spam folder.
-              </Text>
-            </View>
-          ) : (
-            <>
-              <View style={[
-                styles.inputContainer,
-                { backgroundColor: colors.background }
-              ]}>
-                <Mail size={20} color={colors.primary} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  placeholder="Email address"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  placeholderTextColor={colors.muted}
-                />
-              </View>
+          <View
+            style={[
+              styles.inputContainer,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <Mail size={20} color={colors.primary} />
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              placeholder="Email address"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholderTextColor={colors.muted}
+            />
+          </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.resetButton,
-                  { backgroundColor: email.trim() ? colors.primary : colors.muted },
-                  (!email.trim() || loading) && styles.buttonDisabled,
-                ]}
-                onPress={handleSendCode}
-                disabled={!email.trim() || loading} // Disable if email is empty or loading
-              >
-                <Text style={[styles.resetButtonText, { color: colors.card }]}>
-                  {loading ? 'Sending...' : 'Send Reset Instructions'}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
+          <TouchableOpacity
+            style={[
+              styles.resetButton,
+              { backgroundColor: email.trim() ? colors.primary : colors.muted },
+              (!email.trim() || loading) && styles.buttonDisabled,
+            ]}
+            onPress={handleSendCode}
+            disabled={!email.trim() || loading}
+          >
+            <Text style={[styles.resetButtonText, { color: colors.card }]}>
+              {loading ? 'Sending...' : 'Send Reset Instructions'}
+            </Text>
+          </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.loginLink}
             onPress={() => router.push('/login')}
           >
@@ -126,6 +116,29 @@ export default function ForgotPasswordScreen() {
           </TouchableOpacity>
         </Animated.View>
       </View>
+
+      {/* Modal for popup */}
+      <Modal
+        visible={showModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleModalClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.primary }]}>Email Sent!</Text>
+            <Text style={[styles.modalMessage, { color: colors.text }]}>
+              We've sent password reset instructions to {email}. Please check your inbox and spam folder.
+            </Text>
+            <TouchableOpacity
+              style={[styles.modalButton, { backgroundColor: colors.primary }]}
+              onPress={handleModalClose}
+            >
+              <Text style={[styles.modalButtonText, { color: colors.card }]}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -252,5 +265,37 @@ const styles = StyleSheet.create({
   loginLinkText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    width: '80%',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    marginBottom: 10,
+  },
+  modalMessage: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  modalButtonText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
   },
 });

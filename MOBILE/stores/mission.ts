@@ -164,6 +164,8 @@ export const useMissionStore = create<MissionState>((set, get) => ({
   createMission: async (mission: Partial<Mission>): Promise<Mission | null> => {
     set({ loading: true, error: null });
     try {
+
+      console.log('Creating mission:', mission);
       const { data, error } = await supabase
         .from('missions')
         .insert([
@@ -277,7 +279,7 @@ async function generateSignedToken(filePath: string): Promise<string | null> {
   try {
     const { data, error } = await supabase.storage
       .from('images')
-      .createSignedUrl(filePath, 60 * 60 * 10000);
+      .createSignedUrl(filePath, 60 * 60 * 1000000000000000);
 
     const signedURL = data?.signedUrl;
 

@@ -52,6 +52,15 @@ const passwordRequirements = [
   { id: 'special', label: 'One special character' },
 ];
 
+const countryCodes = [
+  { code: '+1', label: 'US/Canada' },
+  { code: '+44', label: 'UK' },
+  { code: '+33', label: 'France' },
+  { code: '+91', label: 'India' },
+  { code: '+234', label: 'Nigeria' },
+  { code: '+226', label: 'Burkina Faso' },
+];
+
 export default function RegisterScreen() {
   const { colors } = useThemeStore();
   const { signUp, loading: authLoading, error } = useAuthStore();
@@ -60,9 +69,13 @@ export default function RegisterScreen() {
     email: '',
     phone: '',
     role: '',
+    superRole: 'user',
+    nationality: 'national',
+    account_status: 'healthy',
     password: '',
     confirmPassword: '',
   });
+  const [selectedCountryCode, setSelectedCountryCode] = useState('+226');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
@@ -87,9 +100,6 @@ export default function RegisterScreen() {
 
   const handleSignUp = async () => {
     try {
-      // setError(null);
-
-      // Validate form
       if (
         !formData.fullName ||
         !formData.email ||
@@ -104,7 +114,6 @@ export default function RegisterScreen() {
         throw new Error('Passwords do not match');
       }
 
-      // Check all password requirements
       const allRequirementsMet = passwordRequirements.every((req) =>
         checkPasswordRequirement(req.id)
       );
@@ -113,11 +122,25 @@ export default function RegisterScreen() {
         throw new Error('Please meet all password requirements');
       }
 
-      // Create user and profile
       await signUp(formData.email, formData.password, {
         role: formData.role as 'worker' | 'technician' | 'entrepreneur',
+        super_role: formData.superRole as
+          | 'user'
+          | 'admin'
+          | 'organization'
+          | 'government'
+          | 'moderator'
+          | 'technology'
+          | 'law'
+          | 'finance',
         full_name: formData.fullName,
-        phone: formData.phone,
+        phone: `${selectedCountryCode}${formData.phone}`,
+        nationality: formData.nationality as
+          | 'national'
+          | 'international'
+          | 'foreign',
+        specialization: null,
+        availability_status: 'available',
         verification_status: 'not_verified',
         docs_status: 'pending',
         profile_picture: null,
@@ -130,12 +153,20 @@ export default function RegisterScreen() {
         work_experience: [],
         education: [],
         languages: [],
+        status: 'active',
+        active: true,
+        account_status: formData.account_status as
+          | 'healthy'
+          | 'warning'
+          | 'suspended'
+          | 'deleted',
+        account_verified: false,
+        metadata: {},
       });
 
-      // Navigate to verification
-      router.push('/verify-email?mode=sign-up');
+      router.push('/verify-email');
     } catch (err) {
-      // error handeled by the store
+      // error handled by the store
     }
   };
 
@@ -211,10 +242,19 @@ export default function RegisterScreen() {
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Phone size={20} color={colors.muted} />
+          <View style={styles.phoneContainer}>
+            <TouchableOpacity
+              style={[styles.countryCode, { backgroundColor: colors.card }]}
+              onPress={() => {
+                // Logic to open a dropdown for country codes
+              }}
+            >
+              <Text style={[styles.countryCodeText, { color: colors.text }]}>
+                {selectedCountryCode}
+              </Text>
+            </TouchableOpacity>
             <TextInput
-              style={[styles.input, { color: colors.text }]}
+              style={[styles.phoneInput, { color: colors.text }]}
               placeholder="Phone number"
               value={formData.phone}
               onChangeText={(text) => setFormData({ ...formData, phone: text })}
@@ -284,13 +324,13 @@ export default function RegisterScreen() {
                 key={req.id}
                 style={[
                   styles.requirementItem,
-                  { backgroundColor: colors.card },
+                  // { backgroundColor: colors.card },
                 ]}
               >
                 {checkPasswordRequirement(req.id) ? (
-                  <Check size={16} color={colors.success} />
+                  <Check size={14} color={colors.success} />
                 ) : (
-                  <AlertCircle size={16} color={colors.muted} />
+                  <AlertCircle size={14} color={colors.muted} />
                 )}
                 <Text
                   style={[
@@ -478,17 +518,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   requirements: {
-    gap: 8,
+    gap: 5,
   },
   requirementItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: 5,
     borderRadius: 8,
   },
   requirementText: {
     fontFamily: 'Inter-Regular',
-    fontSize: 14,
+    fontSize: 12,
     marginLeft: 8,
   },
   submitButton: {
@@ -535,5 +575,27 @@ const styles = StyleSheet.create({
   linkText: {
     fontFamily: 'Inter-SemiBold',
     textDecorationLine: 'underline',
+  },
+  phoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  countryCode: {
+    padding: 12,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  countryCodeText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+  },
+  phoneInput: {
+    flex: 1,
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
   },
 });

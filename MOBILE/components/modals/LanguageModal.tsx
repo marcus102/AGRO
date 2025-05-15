@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { BaseModal } from './BaseModal';
-import { Check } from 'lucide-react-native';
+import { Check, Globe } from 'lucide-react-native';
 import { LANGUAGES } from '@/types/language';
 import { useLanguageStore } from '@/stores/language';
 import { useThemeStore } from '@/stores/theme';
@@ -45,7 +45,7 @@ export function LanguageModal({ visible, onClose }: LanguageModalProps) {
                 onPress={() => handleLanguageSelect(lang.code)}
               >
                 <View style={styles.languageInfo}>
-                  <Text style={styles.flag}>{lang.flag}</Text>
+                 <Globe size={24} color={colors.primary} style={styles.flag} />
                   <View style={styles.languageText}>
                     <Text style={[styles.languageName, { color: colors.text }]}>
                       {lang.nativeName}

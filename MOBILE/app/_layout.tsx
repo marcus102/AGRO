@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
-import { Slot } from 'expo-router';
+import { Stack, SplashScreen } from 'expo-router';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import { SplashScreen } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useThemeStore } from '@/stores/theme';
 import { useAuthStore } from '@/stores/auth';
 import { View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RootLayout() {
   useFrameworkReady();
@@ -27,7 +27,19 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    refreshSession();
+    const initializeApp = async () => {
+      try {
+        await refreshSession();
+        const hasVisited = await AsyncStorage.getItem('hasVisitedBefore');
+        if (!hasVisited) {
+          await AsyncStorage.setItem('hasVisitedBefore', 'true');
+        }
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   // Keep the splash screen visible while we fetch resources
@@ -38,7 +50,11 @@ export default function RootLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={theme === 'light' ? 'dark' : 'light'} />
-      <Slot />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="welcome" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
     </View>
   );
 }

@@ -18,7 +18,6 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const { signIn, loading, error } = useAuthStore();
   
 
@@ -102,16 +101,6 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.optionsContainer}>
-            <View style={styles.rememberContainer}>
-              <Switch
-                value={rememberMe}
-                onValueChange={setRememberMe}
-                trackColor={{ false: '#e5e7eb', true: '#dcfce7' }}
-                thumbColor={rememberMe ? '#166534' : '#9ca3af'}
-              />
-              <Text style={styles.rememberText}>Remember me</Text>
-            </View>
-
             <TouchableOpacity onPress={() => router.push('/forgot-password')}>
               <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>

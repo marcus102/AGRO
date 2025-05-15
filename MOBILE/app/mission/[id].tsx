@@ -10,12 +10,21 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { MapPin, Calendar, Users, Clock, Star, ArrowLeft, PenTool as Tool, Tag, CheckCircle2, AlertCircle, Info } from 'lucide-react-native';
+import {
+  MapPin,
+  Calendar,
+  Users,
+  Clock,
+  ArrowLeft,
+  PenTool as Tool,
+  Tag,
+  AlertCircle,
+  CreditCard,
+} from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useThemeStore } from '@/stores/theme';
-import { useMissionStore } from '@/stores/mission';
-import { Mission } from '@/types/mission';
-
+import { useMissionStore,  } from '@/stores/mission';
+import { Mission, MissionStatus } from '@/types/mission';
 
 function MissionDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -37,7 +46,12 @@ function MissionDetailScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -45,13 +59,17 @@ function MissionDetailScreen() {
 
   if (!mission) {
     return (
-      <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
+      <View
+        style={[styles.errorContainer, { backgroundColor: colors.background }]}
+      >
         <AlertCircle size={48} color={colors.error} />
-        <Text style={[styles.errorTitle, { color: colors.text }]}>Mission introuvable</Text>
+        <Text style={[styles.errorTitle, { color: colors.text }]}>
+          Mission introuvable
+        </Text>
         <Text style={[styles.errorText, { color: colors.muted }]}>
           La mission que vous recherchez n'existe pas ou a été supprimée.
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.backToHomeButton, { backgroundColor: colors.primary }]}
           onPress={() => router.back()}
         >
@@ -63,18 +81,33 @@ function MissionDetailScreen() {
     );
   }
 
-  const InfoCard = ({ icon: Icon, label, value }: { icon: React.ComponentType<{ size: number; color: string }>; label: string; value: string }) => (
+  const InfoCard = ({
+    icon: Icon,
+    label,
+    value,
+  }: {
+    icon: React.ComponentType<{ size: number; color: string }>;
+    label: string;
+    value: string;
+  }) => (
     <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
       <Icon size={20} color={colors.primary} />
       <View style={styles.infoCardContent}>
-        <Text style={[styles.infoCardLabel, { color: colors.muted }]}>{label}</Text>
-        <Text style={[styles.infoCardValue, { color: colors.text }]}>{value}</Text>
+        <Text style={[styles.infoCardLabel, { color: colors.muted }]}>
+          {label}
+        </Text>
+        <Text style={[styles.infoCardValue, { color: colors.text }]}>
+          {value}
+        </Text>
       </View>
     </View>
   );
 
-  const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <Animated.View 
+  const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
+    title,
+    children,
+  }) => (
+    <Animated.View
       entering={FadeInDown}
       style={[styles.section, { backgroundColor: colors.card }]}
     >
@@ -83,18 +116,31 @@ function MissionDetailScreen() {
     </Animated.View>
   );
 
-  const StatusBadge = ({ status }: { status: 'online' | 'in_review' | 'rejected' | string }) => {
+  const StatusBadge = ({
+    status,
+  }: {
+    status: 'online' | 'in_review' | 'rejected' | string;
+  }) => {
     const getStatusColor = () => {
       switch (status) {
-        case 'online': return colors.success;
-        case 'in_review': return colors.warning;
-        case 'rejected': return colors.error;
-        default: return colors.muted;
+        case 'online':
+          return colors.success;
+        case 'in_review':
+          return colors.warning;
+        case 'rejected':
+          return colors.error;
+        default:
+          return colors.muted;
       }
     };
 
     return (
-      <View style={[styles.statusBadge, { backgroundColor: getStatusColor() + '20' }]}>
+      <View
+        style={[
+          styles.statusBadge,
+          { backgroundColor: getStatusColor() + '20' },
+        ]}
+      >
         <Text style={[styles.statusText, { color: getStatusColor() }]}>
           {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
         </Text>
@@ -107,11 +153,11 @@ function MissionDetailScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Image */}
         <View style={styles.coverImageContainer}>
-          <Image 
-            source={{ uri: mission.mission_images[0] }} 
+          <Image
+            source={{ uri: mission.mission_images[0] }}
             style={styles.coverImage}
           />
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.backButton, { backgroundColor: colors.card }]}
             onPress={() => router.back()}
           >
@@ -134,22 +180,22 @@ function MissionDetailScreen() {
 
           {/* Quick Info Grid */}
           <View style={styles.infoGrid}>
-            <InfoCard 
+            <InfoCard
               icon={MapPin}
               label="Localisation"
               value={mission.location}
             />
-            <InfoCard 
+            <InfoCard
               icon={Calendar}
               label="Période"
               value={`${mission.start_date} - ${mission.end_date}`}
             />
-            <InfoCard 
+            <InfoCard
               icon={Users}
               label="Postes"
               value={`${mission.needed_actor_amount} ${mission.needed_actor}(s)`}
             />
-            <InfoCard 
+            <InfoCard
               icon={Clock}
               label="Expérience"
               value={mission.required_experience_level}
@@ -159,8 +205,32 @@ function MissionDetailScreen() {
           {/* Description */}
           <Section title="Description">
             <Text style={[styles.description, { color: colors.text }]}>
-              {mission.mission_description}
+              {' '}
+              {mission.mission_description}{' '}
             </Text>
+          </Section>
+
+          {/* Actor Specialization */}
+          <Section title="Spécialisation de l'acteur">
+            <Text style={[styles.description, { color: colors.text }]}>
+              {' '}
+              {mission.actor_specialization || 'Non spécifié'}{' '}
+            </Text>
+          </Section>
+
+          {/* Surface Details */}
+          <Section title="Surface">
+            <View style={styles.surfaceDetails}>
+              <Text style={[styles.surfaceLabel, { color: colors.muted }]}>
+                Surface
+              </Text>
+              <Text style={[styles.surfaceValue, { color: colors.text }]}>
+                {' '}
+                {mission.surface_area
+                  ? `${mission.surface_area} ${mission.surface_unit || ''}`
+                  : 'Non spécifié'}{' '}
+              </Text>
+            </View>
           </Section>
 
           {/* Equipment */}
@@ -168,7 +238,10 @@ function MissionDetailScreen() {
             <View style={styles.equipmentContainer}>
               <Tool size={24} color={colors.primary} />
               <Text style={[styles.equipmentText, { color: colors.text }]}>
-                {mission.equipment ? 'Équipement fourni' : 'Équipement non fourni'}
+                {' '}
+                {mission.equipment
+                  ? 'Équipement fourni'
+                  : 'Équipement non fourni'}{' '}
               </Text>
             </View>
           </Section>
@@ -178,13 +251,19 @@ function MissionDetailScreen() {
             <Section title="Avantages">
               <View style={styles.advantagesGrid}>
                 {mission.proposed_advantages.map((advantage, index) => (
-                  <View 
+                  <View
                     key={index}
-                    style={[styles.advantageTag, { backgroundColor: colors.primary + '20' }]}
+                    style={[
+                      styles.advantageTag,
+                      { backgroundColor: colors.primary + '20' },
+                    ]}
                   >
                     <Tag size={16} color={colors.primary} />
-                    <Text style={[styles.advantageText, { color: colors.primary }]}>
-                      {advantage.charAt(0).toUpperCase() + advantage.slice(1).replace('_', ' ')}
+                    <Text
+                      style={[styles.advantageText, { color: colors.primary }]}
+                    >
+                      {advantage.charAt(0).toUpperCase() +
+                        advantage.slice(1).replace('_', ' ')}
                     </Text>
                   </View>
                 ))}
@@ -196,23 +275,58 @@ function MissionDetailScreen() {
           <Section title="Détails du prix">
             <View style={styles.priceDetails}>
               <View style={styles.priceRow}>
-                <Text style={[styles.priceLabel, { color: colors.muted }]}>Prix initial</Text>
+                <Text style={[styles.priceLabel, { color: colors.muted }]}>
+                  Prix initial
+                </Text>
                 <Text style={[styles.priceValue, { color: colors.text }]}>
-                  {parseInt(mission.original_price.price).toLocaleString()} FCFA
+                  {' '}
+                  {parseInt(
+                    mission.original_price.price
+                  ).toLocaleString()} FCFA{' '}
                 </Text>
               </View>
               <View style={styles.priceRow}>
-                <Text style={[styles.priceLabel, { color: colors.muted }]}>Ajustements</Text>
+                <Text style={[styles.priceLabel, { color: colors.muted }]}>
+                  Ajustements
+                </Text>
                 <Text style={[styles.priceValue, { color: colors.text }]}>
-                  {parseInt(mission.adjustment_price.price).toLocaleString()} FCFA
+                  {' '}
+                  {parseInt(
+                    mission.adjustment_price.price
+                  ).toLocaleString()}{' '}
+                  FCFA{' '}
                 </Text>
               </View>
               <View style={[styles.priceRow, styles.finalPriceRow]}>
-                <Text style={[styles.finalPriceLabel, { color: colors.text }]}>Prix final</Text>
-                <Text style={[styles.finalPriceValue, { color: colors.primary }]}>
-                  {parseInt(mission.final_price).toLocaleString()} FCFA
+                <Text style={[styles.finalPriceLabel, { color: colors.text }]}>
+                  Prix final
+                </Text>
+                <Text
+                  style={[styles.finalPriceValue, { color: colors.primary }]}
+                >
+                  {' '}
+                  {parseInt(mission.final_price).toLocaleString()} FCFA{' '}
                 </Text>
               </View>
+
+              {mission.status === 'accepted' as MissionStatus  && (
+                <View style={styles.footer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.payButton,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    onPress={() => router.push(`/payment/${mission.id}`)}
+                  >
+                    <CreditCard size={20} color={colors.card} />
+                    <Text
+                      style={[styles.payButtonText, { color: colors.card }]}
+                    >
+                      Payer maintenant
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </Section>
         </View>
@@ -443,6 +557,32 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   backToHomeText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
+  },
+  surfaceDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  surfaceLabel: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+  },
+  surfaceValue: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+  },
+  payButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  payButtonText: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 16,
   },

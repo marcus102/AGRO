@@ -123,7 +123,7 @@ export default function WorkerDashboard() {
             <>
               <SectionHeader title="Missions" colors={colors} />
               <FilterBar
-                filters={['All', 'in_review', 'online', 'rejected', 'completed', 'removed']}
+                filters={['All', 'in_review', 'accepted', 'online', 'rejected', 'completed', 'removed']}
                 selectedFilter={selectedFilter}
                 onFilterChange={setSelectedFilter}
                 colors={colors}
